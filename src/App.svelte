@@ -25,7 +25,13 @@
   <p class="status">{status}</p>
   <div class="board">
     {#each board as cell, i}
-      <button class="cell" on:click={() => play(i)} aria-label={`cell ${i + 1}`}>
+      <button
+        class="cell"
+        class:x={cell === 'X'}
+        class:o={cell === 'O'}
+        on:click={() => play(i)}
+        aria-label={`cell ${i + 1}`}
+      >
         {cell ?? ''}
       </button>
     {/each}
@@ -59,6 +65,12 @@
   }
   .cell:hover:not(:disabled) {
     background: #e4e4e7;
+  }
+  .cell.x {
+    color: #dc2626;
+  }
+  .cell.o {
+    color: #2563eb;
   }
   .reset {
     margin-top: 1rem;
