@@ -40,6 +40,13 @@
 </main>
 
 <style>
+  :global(html),
+  :global(body) {
+    background: #09090b;
+    color: #f4f4f5;
+    margin: 0;
+    min-height: 100vh;
+  }
   main {
     font-family: system-ui, sans-serif;
     max-width: 320px;
@@ -49,6 +56,7 @@
   .status {
     font-size: 1.2rem;
     margin: 1rem 0;
+    color: #a1a1aa;
   }
   .board {
     display: grid;
@@ -58,27 +66,32 @@
   .cell {
     aspect-ratio: 1;
     font-size: 2.5rem;
-    background: #f4f4f5;
-    border: 1px solid #d4d4d8;
+    background: #27272a;
+    color: #f4f4f5;
+    border: 1px solid #3f3f46;
     border-radius: 8px;
     cursor: pointer;
   }
   .cell:hover:not(:disabled) {
-    background: #e4e4e7;
+    background: #3f3f46;
   }
   .cell.x {
-    color: #dc2626;
+    color: #f87171;
   }
   .cell.o {
-    color: #2563eb;
+    color: #60a5fa;
   }
   .reset {
     margin-top: 1rem;
     padding: 0.5rem 1rem;
     font-size: 1rem;
     border-radius: 6px;
-    border: 1px solid #d4d4d8;
-    background: #fff;
+    border: 1px solid #3f3f46;
+    background: #18181b;
+    color: #f4f4f5;
     cursor: pointer;
+  }
+  .reset:hover {
+    background: #27272a;
   }
 </style>
