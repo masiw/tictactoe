@@ -7,7 +7,12 @@ Guidance for Claude Code sessions in this repo (especially Claude Code on the we
 - Svelte 4 + TypeScript
 - Vite (dev server, bundler)
 - Vitest (unit tests)
+- Firebase Realtime Database for shared multiplayer state (client-only; no backend code in this repo)
 - Deploy target: Vercel (auto-deploys on push to `main`, preview deploys for PRs)
+
+## Env vars
+
+Firebase config comes from `VITE_FIREBASE_*` env vars (see `.env.example` and `SETUP.md`). They're public web-app keys — safe in client bundles — but never commit `.env.local`.
 
 ## Commands
 
@@ -38,6 +43,8 @@ Use the `mcp__github__*` tools for all GitHub operations — there is no `gh` CL
 ## Project layout
 
 - `src/game.ts` — pure game logic, fully unit-tested
-- `src/App.svelte` — UI
+- `src/firebase.ts` — Firebase init + `getDb()`
+- `src/multiplayer.ts` — shared-state primitives (`resolveRole`, `claimRole`, `makeMove`, `subscribeGame`, `isExpired`)
+- `src/App.svelte` — UI; renders different states for P1/P2/spectator/expired/finished
 - `src/main.ts` — entry
-- `src/*.test.ts` — Vitest specs
+- `src/*.test.ts` — Vitest specs (pure logic only — no network)

@@ -37,7 +37,24 @@ GitHub → repo → **Settings → Branches → Add branch ruleset** (or classic
 
 This is what makes "auto-merge on green CI" actually wait for CI.
 
-## 5. (Optional) Subscribe Claude to your PRs
+## 5. Firebase Realtime Database (for multiplayer)
+
+The multiplayer game state lives in a single Firebase RTDB node. One-time setup:
+
+1. Go to <https://console.firebase.google.com/> → **Add project** (any name).
+2. In the project, **Build → Realtime Database → Create Database**. Choose a region, then start in **test mode** (public read/write — fine for this demo; lock down with security rules later if you want).
+3. Project settings (gear icon) → **General → Your apps → Add app → Web**. Register the app. Copy the `firebaseConfig` values.
+4. In the Vercel project: **Settings → Environment Variables**. Add the following keys for Production and Preview environments:
+   - `VITE_FIREBASE_API_KEY` — from `apiKey`
+   - `VITE_FIREBASE_AUTH_DOMAIN` — from `authDomain`
+   - `VITE_FIREBASE_DATABASE_URL` — from `databaseURL` (e.g. `https://your-project-default-rtdb.firebaseio.com`)
+   - `VITE_FIREBASE_PROJECT_ID` — from `projectId`
+5. Redeploy on Vercel (Deployments → ⋯ → Redeploy) so the new env vars are picked up.
+6. Locally, copy `.env.example` to `.env.local` and paste the same values, then `npm run dev`.
+
+Without these env vars the app will load and show an inline "Firebase is not configured" message — the build still succeeds, so CI passes.
+
+## 6. (Optional) Subscribe Claude to your PRs
 
 When Claude opens a PR for you, you can ask it to "watch this PR" — it'll then auto-respond to CI failures and review comments without you re-prompting.
 
