@@ -218,6 +218,16 @@ export async function claimMatch(
   }
 
   if (plan.action.kind === 'join') {
+    // Warm the local cache for this specific game path before the transaction.
+    // Without this, runTransaction calls our update function with raw=null
+    // (because /games/$gameId wasn't individually cached — readGames() reads
+    // /games with a query, which doesn't populate per-child caches in a way
+    // transactions use), and we return undefined to abort. Firebase does not
+    // retry an aborted transaction against the server, so the join silently
+    // falls through to createNewGame and the visitor ends up as P1 of a
+    // brand new game instead of P2 of the waiting one.
+    await get(gameRef(plan.action.gameId));
+
     const result = await runTransaction(
       gameRef(plan.action.gameId),
       (raw: unknown) => {
