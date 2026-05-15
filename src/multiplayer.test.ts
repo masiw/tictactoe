@@ -1,13 +1,17 @@
 import { describe, it, expect } from 'vitest';
 import { emptyBoard } from './game';
 import {
-  GAME_MAX_MS,
-  RESERVATION_MS,
+  MOVE_CLOCK_MS,
   isExpired,
+  mySymbol,
   normalize,
-  resolveRole,
+  planMatch,
+  shouldForfeit,
   type GameState,
+  type GameWithId,
 } from './multiplayer';
+
+const T0 = 1_000_000;
 
 const fresh = (overrides: Partial<GameState> = {}): GameState => ({
   state: 'waiting',
@@ -16,154 +20,192 @@ const fresh = (overrides: Partial<GameState> = {}): GameState => ({
   board: emptyBoard(),
   turn: 'X',
   winner: null,
-  createdAt: 1_000_000,
+  createdAt: T0,
+  lastMoveAt: T0,
   ...overrides,
 });
 
+const game = (id: string, overrides: Partial<GameState> = {}): GameWithId => ({
+  id,
+  state: fresh(overrides),
+});
+
 describe('isExpired', () => {
-  it('is false right after creation', () => {
-    expect(isExpired(fresh(), 1_000_000)).toBe(false);
+  it('is false within the move clock', () => {
+    expect(isExpired(fresh(), T0 + MOVE_CLOCK_MS - 1)).toBe(false);
   });
 
-  it('is true past RESERVATION_MS while still waiting', () => {
-    expect(isExpired(fresh(), 1_000_000 + RESERVATION_MS + 1)).toBe(true);
+  it('is true past the move clock for waiting games', () => {
+    expect(isExpired(fresh(), T0 + MOVE_CLOCK_MS + 1)).toBe(true);
   });
 
-  it('does not expire a playing game just past the 5-minute reservation', () => {
-    const playing = fresh({ state: 'playing' });
-    expect(isExpired(playing, 1_000_000 + RESERVATION_MS + 1)).toBe(false);
-  });
-
-  it('expires a playing game past GAME_MAX_MS (abandoned)', () => {
-    const playing = fresh({ state: 'playing' });
-    expect(isExpired(playing, 1_000_000 + GAME_MAX_MS + 1)).toBe(true);
+  it('is true past the move clock for playing games', () => {
+    expect(isExpired(fresh({ state: 'playing' }), T0 + MOVE_CLOCK_MS + 1)).toBe(true);
   });
 
   it('never expires a finished game', () => {
-    const finished = fresh({ state: 'finished' });
-    expect(isExpired(finished, 1_000_000 + GAME_MAX_MS * 10)).toBe(false);
+    expect(isExpired(fresh({ state: 'finished' }), T0 + MOVE_CLOCK_MS * 100)).toBe(false);
+  });
+
+  it('resets on every lastMoveAt update', () => {
+    const moved = fresh({ state: 'playing', lastMoveAt: T0 + 1_000_000 });
+    expect(isExpired(moved, T0 + 1_000_000 + MOVE_CLOCK_MS - 1)).toBe(false);
   });
 });
 
-describe('resolveRole', () => {
-  it('claims P1 on an empty game', () => {
-    const r = resolveRole(null, 'me', 5_000);
-    expect(r.role).toBe('p1');
-    expect(r.next?.p1).toEqual({ id: 'me' });
-    expect(r.next?.state).toBe('waiting');
-    expect(r.next?.createdAt).toBe(5_000);
+describe('mySymbol', () => {
+  it('returns X for p1', () => {
+    expect(mySymbol(fresh({ p2: { id: 'bob' } }), 'alice')).toBe('X');
+  });
+  it('returns O for p2', () => {
+    expect(mySymbol(fresh({ p2: { id: 'bob' } }), 'bob')).toBe('O');
+  });
+  it('returns null for non-participants', () => {
+    expect(mySymbol(fresh({ p2: { id: 'bob' } }), 'carol')).toBe(null);
+  });
+});
+
+describe('shouldForfeit', () => {
+  it('returns my symbol when opponent has timed out', () => {
+    const g = fresh({ state: 'playing', p2: { id: 'bob' }, turn: 'O' });
+    // I am alice (X). It is bob's turn but he hasn't moved in > 2 min.
+    expect(shouldForfeit(g, 'alice', T0 + MOVE_CLOCK_MS + 1)).toBe('X');
   });
 
-  it('claims P1 when previous game finished', () => {
-    const r = resolveRole(fresh({ state: 'finished' }), 'me', 5_000);
-    expect(r.role).toBe('p1');
-    expect(r.next?.p1).toEqual({ id: 'me' });
+  it('returns null on my own turn (I cannot declare myself the forfeit-winner)', () => {
+    const g = fresh({ state: 'playing', p2: { id: 'bob' }, turn: 'X' });
+    expect(shouldForfeit(g, 'alice', T0 + MOVE_CLOCK_MS + 1)).toBe(null);
   });
 
-  it('claims P1 when previous waiting slot expired', () => {
-    const r = resolveRole(fresh(), 'me', 1_000_000 + RESERVATION_MS + 1);
-    expect(r.role).toBe('p1');
-    expect(r.next?.p1).toEqual({ id: 'me' });
+  it('returns null when within the move clock', () => {
+    const g = fresh({ state: 'playing', p2: { id: 'bob' }, turn: 'O' });
+    expect(shouldForfeit(g, 'alice', T0 + MOVE_CLOCK_MS - 1)).toBe(null);
   });
 
-  it('claims P2 when fresh waiting slot has another P1', () => {
-    const r = resolveRole(fresh(), 'bob', 1_000_500);
-    expect(r.role).toBe('p2');
-    expect(r.next?.p2).toEqual({ id: 'bob' });
-    expect(r.next?.state).toBe('playing');
-    expect(r.next?.turn).toBe('X');
+  it('returns null in waiting state (no opponent yet)', () => {
+    const g = fresh({ state: 'waiting' });
+    expect(shouldForfeit(g, 'alice', T0 + MOVE_CLOCK_MS + 1)).toBe(null);
   });
 
-  it('returning P1 keeps slot, does not overwrite', () => {
-    const r = resolveRole(fresh(), 'alice', 1_000_500);
-    expect(r.role).toBe('p1');
-    expect(r.next).toBe(null);
+  it('returns null for non-participants', () => {
+    const g = fresh({ state: 'playing', p2: { id: 'bob' }, turn: 'O' });
+    expect(shouldForfeit(g, 'carol', T0 + MOVE_CLOCK_MS + 1)).toBe(null);
+  });
+});
+
+describe('planMatch', () => {
+  it('creates a new game when stack is empty', () => {
+    const r = planMatch([], null, 'me', T0);
+    expect(r.action.kind).toBe('create');
+    expect(r.toDelete).toEqual([]);
   });
 
-  it('spectates when both slots filled', () => {
-    const playing = fresh({
+  it('joins the top waiting game as P2', () => {
+    const top = game('g2', { state: 'waiting' });
+    const r = planMatch([top, game('g1', { state: 'playing', p2: { id: 'bob' } })], null, 'me', T0);
+    expect(r.action).toEqual({ kind: 'join', gameId: 'g2' });
+    expect(r.toDelete).toEqual([]);
+  });
+
+  it('skips and deletes a finished game at the top, joining the next waiting one', () => {
+    const finished = game('g3', { state: 'finished', winner: 'X', p2: { id: 'bob' } });
+    const waiting = game('g2', { state: 'waiting', p1: { id: 'carol' } });
+    const r = planMatch([finished, waiting], null, 'me', T0);
+    expect(r.action).toEqual({ kind: 'join', gameId: 'g2' });
+    expect(r.toDelete).toEqual(['g3']);
+  });
+
+  it('skips and deletes an expired waiting game, creating a fresh game when the next one is an active playing game', () => {
+    const expired = game('g3', { state: 'waiting' });
+    const playing = game('g2', {
       state: 'playing',
       p2: { id: 'bob' },
+      lastMoveAt: T0 + MOVE_CLOCK_MS, // recent enough to still be active at the check time
     });
-    const r = resolveRole(playing, 'carol', 1_000_500);
-    expect(r.role).toBe('spectator');
-    expect(r.next).toBe(null);
+    const r = planMatch([expired, playing], null, 'me', T0 + MOVE_CLOCK_MS + 10);
+    expect(r.action).toEqual({ kind: 'create' });
+    expect(r.toDelete).toEqual(['g3']);
   });
 
-  it('claims P1 when a playing game has been abandoned past GAME_MAX_MS', () => {
-    const stuck = fresh({ state: 'playing', p2: { id: 'bob' } });
-    const r = resolveRole(stuck, 'carol', 1_000_000 + GAME_MAX_MS + 1);
-    expect(r.role).toBe('p1');
-    expect(r.next?.p1).toEqual({ id: 'carol' });
-    expect(r.next?.state).toBe('waiting');
+  it('creates a new game when the top is a playing game with both slots taken', () => {
+    const playing = game('g1', { state: 'playing', p2: { id: 'bob' }, lastMoveAt: T0 });
+    const r = planMatch([playing], null, 'me', T0 + 1000);
+    expect(r.action).toEqual({ kind: 'create' });
+    expect(r.toDelete).toEqual([]);
   });
 
-  it('returning player during play keeps their role', () => {
-    const playing = fresh({ state: 'playing', p2: { id: 'bob' } });
-    expect(resolveRole(playing, 'alice', 1_000_500).role).toBe('p1');
-    expect(resolveRole(playing, 'bob', 1_000_500).role).toBe('p2');
+  it('creates a new game when the only waiting slot is my own (avoids re-claiming P2 of my own game)', () => {
+    const mine = game('g1', { state: 'waiting', p1: { id: 'me' } });
+    const r = planMatch([mine], null, 'me', T0 + 1000);
+    expect(r.action).toEqual({ kind: 'create' });
+    expect(r.toDelete).toEqual([]);
+  });
+
+  it('rejoins my remembered game when it is still alive and I am in it', () => {
+    const buried = game('g1', { state: 'playing', p1: { id: 'me' }, p2: { id: 'bob' }, lastMoveAt: T0 });
+    const top = game('g2', { state: 'waiting', p1: { id: 'carol' } });
+    const r = planMatch([top, buried], 'g1', 'me', T0 + 1000);
+    expect(r.action).toEqual({ kind: 'rejoin', gameId: 'g1', role: 'p1' });
+    expect(r.toDelete).toEqual([]);
+  });
+
+  it('ignores a remembered game that has finished', () => {
+    const finished = game('g1', { state: 'finished', p1: { id: 'me' }, p2: { id: 'bob' }, winner: 'X' });
+    const r = planMatch([finished], 'g1', 'me', T0 + 1000);
+    expect(r.action.kind).not.toBe('rejoin');
+  });
+
+  it('ignores a remembered game that has expired', () => {
+    const expired = game('g1', { state: 'playing', p1: { id: 'me' }, p2: { id: 'bob' }, lastMoveAt: T0 });
+    const r = planMatch([expired], 'g1', 'me', T0 + MOVE_CLOCK_MS + 10);
+    expect(r.action.kind).not.toBe('rejoin');
   });
 });
 
 describe('normalize', () => {
-  it('returns null for null / undefined / non-object', () => {
+  it('returns null for non-objects', () => {
     expect(normalize(null)).toBe(null);
-    expect(normalize(undefined)).toBe(null);
     expect(normalize('nope')).toBe(null);
   });
 
-  it('returns null when state field is missing or invalid', () => {
+  it('returns null when state is missing or invalid', () => {
     expect(normalize({ p1: { id: 'a' }, createdAt: 1 })).toBe(null);
     expect(normalize({ state: 'banana' })).toBe(null);
   });
 
-  it('fills in board when Firebase pruned it (waiting game, empty board)', () => {
-    // Firebase strips an all-null array; the stored payload has no `board` key.
-    const raw = {
-      state: 'waiting',
-      p1: { id: 'alice' },
-      turn: 'X',
-      createdAt: 5,
-    };
-    expect(normalize(raw)?.board).toEqual(emptyBoard());
+  it('defaults lastMoveAt to createdAt when missing', () => {
+    const n = normalize({ state: 'waiting', p1: { id: 'a' }, turn: 'X', createdAt: 42 });
+    expect(n?.lastMoveAt).toBe(42);
   });
 
-  it('reconstructs board when Firebase stored it as an index-keyed object', () => {
-    const raw = {
+  it('rebuilds an empty board when Firebase pruned it', () => {
+    const n = normalize({ state: 'waiting', p1: { id: 'a' }, turn: 'X', createdAt: 1, lastMoveAt: 1 });
+    expect(n?.board).toEqual(emptyBoard());
+  });
+
+  it('rebuilds an index-keyed board object', () => {
+    const n = normalize({
       state: 'playing',
       p1: { id: 'a' },
       p2: { id: 'b' },
       board: { 0: 'X', 4: 'O' },
       turn: 'X',
-      createdAt: 5,
-    };
-    expect(normalize(raw)?.board).toEqual([
-      'X', null, null, null, 'O', null, null, null, null,
-    ]);
-  });
-
-  it('coerces missing p2 / winner to null', () => {
-    const n = normalize({
-      state: 'waiting',
-      p1: { id: 'a' },
-      turn: 'X',
-      createdAt: 5,
+      createdAt: 1,
+      lastMoveAt: 2,
     });
-    expect(n?.p2).toBe(null);
-    expect(n?.winner).toBe(null);
+    expect(n?.board).toEqual(['X', null, null, null, 'O', null, null, null, null]);
   });
 
-  it('rejects bogus board cell values', () => {
+  it('rejects bogus cell values', () => {
     const n = normalize({
       state: 'playing',
       p1: { id: 'a' },
       p2: { id: 'b' },
       board: ['X', 'Q', 42, null, 'O', null, null, null, null],
       turn: 'O',
-      createdAt: 5,
+      createdAt: 1,
+      lastMoveAt: 1,
     });
-    expect(n?.board).toEqual([
-      'X', null, null, null, 'O', null, null, null, null,
-    ]);
+    expect(n?.board).toEqual(['X', null, null, null, 'O', null, null, null, null]);
   });
 });

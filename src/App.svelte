@@ -3,46 +3,53 @@
   import type { Cell } from './game';
   import { firebaseConfigured } from './firebase';
   import {
-    RESERVATION_MS,
-    claimRole,
+    MOVE_CLOCK_MS,
+    claimMatch,
     clientId,
-    isExpired,
+    declareForfeit,
+    forgetGame,
     makeMove,
+    mySymbol as symbolOf,
+    shouldForfeit,
     subscribeGame,
     type GameState,
     type Role,
   } from './multiplayer';
 
-  let game: GameState | null = null;
+  let gameId: string | null = null;
   let role: Role | null = null;
+  let liveGame: GameState | null = null;
+  let lastKnownGame: GameState | null = null;
   let myId = '';
   let now = Date.now();
   let loading = true;
   let initError = '';
   let unsubscribe: (() => void) | null = null;
   let tick: ReturnType<typeof setInterval> | null = null;
+  let forfeitInFlight = false;
 
-  $: mySymbol = role === 'p1' ? 'X' : role === 'p2' ? 'O' : null;
-  $: expired = game ? isExpired(game, now) : false;
-  $: myTurn =
-    !!game && game.state === 'playing' && mySymbol === game.turn;
-
-  $: phase = computePhase(game, role, expired);
+  $: displayedGame = liveGame ?? lastKnownGame;
+  $: mySym = role === 'p1' ? 'X' : role === 'p2' ? 'O' : null;
+  $: phase = computePhase(displayedGame, liveGame, now);
+  $: myTurn = !!displayedGame && displayedGame.state === 'playing' && displayedGame.turn === mySym;
+  $: clockMs = displayedGame
+    ? Math.max(0, displayedGame.lastMoveAt + MOVE_CLOCK_MS - now)
+    : 0;
 
   function computePhase(
-    g: GameState | null,
-    r: Role | null,
-    isExp: boolean,
-  ): 'loading' | 'p1-waiting' | 'p1-expired' | 'playing' | 'finished' | 'spectating' {
-    if (!g || !r) return 'loading';
-    if (g.state === 'waiting') {
-      if (r === 'p1') return isExp ? 'p1-expired' : 'p1-waiting';
-      return 'spectating';
+    shown: GameState | null,
+    live: GameState | null,
+    t: number,
+  ): 'loading' | 'p1-waiting' | 'p1-expired' | 'playing' | 'finished' {
+    if (!shown) return 'loading';
+    if (shown.state === 'finished') return 'finished';
+    // Game was deleted from DB after finishing — keep the cached final view.
+    if (!live && lastKnownGame?.state === 'finished') return 'finished';
+    if (shown.state === 'waiting') {
+      const expired = t - shown.lastMoveAt > MOVE_CLOCK_MS;
+      return expired ? 'p1-expired' : 'p1-waiting';
     }
-    if (g.state === 'playing') {
-      return r === 'spectator' ? 'spectating' : 'playing';
-    }
-    return 'finished';
+    return 'playing';
   }
 
   $: status = (() => {
@@ -50,26 +57,24 @@
       case 'loading':
         return 'Loading…';
       case 'p1-waiting':
-        return `You're X. Waiting for opponent… (${countdown(game!, now)})`;
+        return `You're X. Waiting for opponent… (${fmt(clockMs)})`;
       case 'p1-expired':
-        return 'No one joined. Refresh to try again.';
+        return 'No one joined. Refresh to start a new game.';
       case 'playing':
-        return myTurn ? 'Your turn.' : "Opponent's turn.";
+        return myTurn
+          ? `Your turn — ${fmt(clockMs)} to move`
+          : `Opponent's turn — ${fmt(clockMs)} left`;
       case 'finished': {
-        const w = game?.winner;
-        const result =
-          w === 'draw' ? "It's a draw." : w ? `${w} wins!` : 'Game over.';
-        return role === 'spectator'
-          ? `${result} Refresh to play next.`
-          : `${result} Refresh for a new game.`;
+        const w = displayedGame?.winner;
+        if (w === 'draw') return "It's a draw. Refresh for a new game.";
+        if (w === mySym) return 'You win! Refresh for a new game.';
+        if (w) return 'You lose. Refresh for a new game.';
+        return 'Game over. Refresh for a new game.';
       }
-      case 'spectating':
-        return 'Spectating — game in progress.';
     }
   })();
 
-  function countdown(g: GameState, t: number): string {
-    const ms = Math.max(0, g.createdAt + RESERVATION_MS - t);
+  function fmt(ms: number): string {
     const s = Math.ceil(ms / 1000);
     const mm = Math.floor(s / 60);
     const ss = String(s % 60).padStart(2, '0');
@@ -81,8 +86,20 @@
   }
 
   function onCellClick(i: number) {
-    if (phase !== 'playing' || !myTurn) return;
-    void makeMove(i, myId);
+    if (!gameId || phase !== 'playing' || !myTurn) return;
+    void makeMove(gameId, i, myId, Date.now());
+  }
+
+  async function maybeForfeit() {
+    if (!gameId || forfeitInFlight || !liveGame) return;
+    if (!symbolOf(liveGame, myId)) return;
+    if (!shouldForfeit(liveGame, myId, Date.now())) return;
+    forfeitInFlight = true;
+    try {
+      await declareForfeit(gameId, myId, Date.now());
+    } finally {
+      forfeitInFlight = false;
+    }
   }
 
   onMount(async () => {
@@ -94,13 +111,24 @@
     }
     try {
       myId = clientId();
-      now = Date.now();
-      role = await claimRole(myId, now);
-      unsubscribe = subscribeGame((s) => {
-        game = s;
+      const result = await claimMatch(myId, Date.now());
+      gameId = result.gameId;
+      role = result.role;
+      unsubscribe = subscribeGame(gameId, (s) => {
+        if (s) {
+          liveGame = s;
+          lastKnownGame = s;
+          if (s.state === 'finished') {
+            // We don't need to remember this game across reloads.
+            forgetGame();
+          }
+        } else {
+          liveGame = null;
+        }
       });
       tick = setInterval(() => {
         now = Date.now();
+        void maybeForfeit();
       }, 1000);
     } catch (e) {
       initError = e instanceof Error ? e.message : String(e);
@@ -120,12 +148,12 @@
 
   {#if initError}
     <p class="error">{initError}</p>
-  {:else if loading || !game}
+  {:else if loading || !displayedGame}
     <p class="status">Loading…</p>
   {:else}
     <p class="status">{status}</p>
     <div class="board">
-      {#each game.board as cell, i}
+      {#each displayedGame.board as cell, i}
         <button
           class="cell"
           class:x={cell === 'X'}
@@ -138,8 +166,8 @@
         </button>
       {/each}
     </div>
-    {#if role && role !== 'spectator'}
-      <p class="role">You are {mySymbol}.</p>
+    {#if mySym}
+      <p class="role">You are {mySym}.</p>
     {/if}
   {/if}
 </main>

@@ -48,8 +48,8 @@ Use the `mcp__github__*` tools for all GitHub operations — there is no `gh` CL
 
 - `src/game.ts` — pure game logic, fully unit-tested
 - `src/firebase.ts` — Firebase init + `getDb()`
-- `src/multiplayer.ts` — shared-state primitives (`resolveRole`, `claimRole`, `makeMove`, `subscribeGame`, `isExpired`)
-- `src/App.svelte` — UI; renders different states for P1/P2/spectator/expired/finished
+- `src/multiplayer.ts` — shared-state primitives. Data model: `/games/{pushKey}` (top of stack = newest push key). Key functions: `planMatch` (pure matchmaking + lazy-sweep selection), `claimMatch` (page-load entry — rejoin / join / create), `makeMove`, `declareForfeit`, `subscribeGame`, `shouldForfeit`, `isExpired`. Move clock is `MOVE_CLOCK_MS` (2 min) tied to `lastMoveAt`.
+- `src/App.svelte` — UI; renders loading / p1-waiting / p1-expired / playing / finished. No spectator role. Caches last non-null game state so the eager-deleted finished game still shows.
 - `src/main.ts` — entry
 - `src/*.test.ts` — Vitest specs (pure logic only — no network)
-- `database.rules.json` — Firebase RTDB security rules (source of truth; deployed manually via Firebase Console)
+- `database.rules.json` — Firebase RTDB security rules (source of truth; deployed manually via Firebase Console). Path: `/games/$gameId`.
