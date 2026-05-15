@@ -71,13 +71,15 @@ The Firebase web SDK `apiKey` is *intentionally public* — it ships in the depl
 
 ### b. Deploy the Realtime Database rules
 
-The intended rules live in `database.rules.json` at the repo root. They lock writes to `/game`, validate the schema, and reject any other path.
+The intended rules live in `database.rules.json` at the repo root. They lock writes to `/games/$gameId`, validate the schema, and reject any other path.
 
 1. Firebase Console → your project → **Realtime Database → Rules** tab.
 2. Replace whatever's there with the contents of `database.rules.json`.
 3. Click **Publish**. The editor validates the JSON before saving.
 
 Repeat this whenever `database.rules.json` changes in a PR.
+
+After deploying the multi-game version, also delete any pre-existing data under `/game` (singular) from the **Data** tab — it's orphaned and will eventually be ignored, but cleanup keeps the DB tidy.
 
 ### c. Rotate the API key if it's ever been exposed
 
