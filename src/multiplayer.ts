@@ -218,41 +218,52 @@ export async function claimMatch(
   }
 
   if (plan.action.kind === 'join') {
-    // Warm the local cache for this specific game path before the transaction.
-    // Without this, runTransaction calls our update function with raw=null
-    // (because /games/$gameId wasn't individually cached — readGames() reads
-    // /games with a query, which doesn't populate per-child caches in a way
-    // transactions use), and we return undefined to abort. Firebase does not
-    // retry an aborted transaction against the server, so the join silently
-    // falls through to createNewGame and the visitor ends up as P1 of a
-    // brand new game instead of P2 of the waiting one.
-    await get(gameRef(plan.action.gameId));
+    const joinId = plan.action.gameId;
+    // runTransaction's first call reads from the SDK's sync tree, which is
+    // populated only while there's an *active* listener at the path. A bare
+    // get() doesn't help because the SDK removes the registration as soon
+    // as get() resolves, and the sync point gets cleaned up with it.
+    // readGames() above uses a query (orderByKey/limitToLast), which stores
+    // its result as a tagged-query view, not as a complete-data sync point
+    // for /games/$gameId. So without the onValue below, the transaction's
+    // first call gets null, my update returns undefined to abort, Firebase
+    // does not retry against the server, and the join silently falls through
+    // to createNewGame — the visitor ends up as P1 of a brand new game
+    // instead of P2 of the waiting one.
+    let releaseListener: () => void = () => {};
+    await new Promise<void>((resolve) => {
+      releaseListener = onValue(gameRef(joinId), () => resolve());
+    });
 
-    const result = await runTransaction(
-      gameRef(plan.action.gameId),
-      (raw: unknown) => {
-        const cur = normalize(raw);
-        if (
-          !cur ||
-          cur.state !== 'waiting' ||
-          cur.p2 ||
-          cur.p1?.id === myId ||
-          isExpired(cur, now)
-        ) {
-          return; // abort
-        }
-        return {
-          ...cur,
-          p2: { id: myId },
-          state: 'playing',
-          turn: 'X',
-          lastMoveAt: now,
-        };
-      },
-    );
-    if (result.committed) {
-      rememberGame(plan.action.gameId);
-      return { gameId: plan.action.gameId, role: 'p2' };
+    try {
+      const result = await runTransaction(
+        gameRef(joinId),
+        (raw: unknown) => {
+          const cur = normalize(raw);
+          if (
+            !cur ||
+            cur.state !== 'waiting' ||
+            cur.p2 ||
+            cur.p1?.id === myId ||
+            isExpired(cur, now)
+          ) {
+            return; // abort
+          }
+          return {
+            ...cur,
+            p2: { id: myId },
+            state: 'playing',
+            turn: 'X',
+            lastMoveAt: now,
+          };
+        },
+      );
+      if (result.committed) {
+        rememberGame(joinId);
+        return { gameId: joinId, role: 'p2' };
+      }
+    } finally {
+      releaseListener();
     }
   }
 
