@@ -13,6 +13,12 @@ import { emptyBoard, isDraw, winner, type Cell } from './game';
 import { getDb } from './firebase';
 
 export const MOVE_CLOCK_MS = 2 * 60 * 1000;
+// How long a finished game stays in the DB before the eager delete fires.
+// Without a delay, Firebase RTDB coalesces the {state: 'finished'} write
+// and the subsequent set(null) into a single update on slower listeners,
+// so the opponent never receives the finished state — their UI stays
+// stuck on the previous "playing" snapshot.
+export const FINISHED_VISIBILITY_MS = 3000;
 const GAMES_PATH = 'games';
 const REMEMBERED_GAME_KEY = 'tictactoe.gameId';
 const MAX_GAMES_SCAN = 50;
@@ -188,6 +194,10 @@ function deleteGame(gameId: string): void {
   void set(gameRef(gameId), null).catch(() => {});
 }
 
+function scheduleFinishedDelete(gameId: string): void {
+  setTimeout(() => deleteGame(gameId), FINISHED_VISIBILITY_MS);
+}
+
 function freshGame(myId: string, now: number): GameState {
   return {
     state: 'waiting',
@@ -330,7 +340,7 @@ export async function makeMove(
     } as GameState;
   });
   if ((outcome as MoveOutcome) === 'finished') {
-    deleteGame(gameId);
+    scheduleFinishedDelete(gameId);
   }
   return outcome;
 }
@@ -349,7 +359,7 @@ export async function declareForfeit(
     return { ...cur, state: 'finished', winner: winnerSym } as GameState;
   });
   if (won) {
-    deleteGame(gameId);
+    scheduleFinishedDelete(gameId);
   }
   return won;
 }
