@@ -3,6 +3,7 @@ import { emptyBoard, isDraw, winner, type Cell } from './game';
 import { getDb } from './firebase';
 
 export const RESERVATION_MS = 5 * 60 * 1000;
+export const GAME_MAX_MS = 30 * 60 * 1000;
 const GAME_PATH = 'game';
 
 export type Player = { id: string };
@@ -20,7 +21,13 @@ export type GameState = {
 export type Role = 'p1' | 'p2' | 'spectator';
 
 export function isExpired(state: GameState, now: number): boolean {
-  return state.state === 'waiting' && now - state.createdAt > RESERVATION_MS;
+  if (state.state === 'waiting') {
+    return now - state.createdAt > RESERVATION_MS;
+  }
+  if (state.state === 'playing') {
+    return now - state.createdAt > GAME_MAX_MS;
+  }
+  return false;
 }
 
 function freshGame(myId: string, now: number): GameState {

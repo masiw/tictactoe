@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { emptyBoard } from './game';
 import {
+  GAME_MAX_MS,
   RESERVATION_MS,
   isExpired,
   normalize,
@@ -28,9 +29,19 @@ describe('isExpired', () => {
     expect(isExpired(fresh(), 1_000_000 + RESERVATION_MS + 1)).toBe(true);
   });
 
-  it('only applies to waiting state', () => {
+  it('does not expire a playing game just past the 5-minute reservation', () => {
     const playing = fresh({ state: 'playing' });
     expect(isExpired(playing, 1_000_000 + RESERVATION_MS + 1)).toBe(false);
+  });
+
+  it('expires a playing game past GAME_MAX_MS (abandoned)', () => {
+    const playing = fresh({ state: 'playing' });
+    expect(isExpired(playing, 1_000_000 + GAME_MAX_MS + 1)).toBe(true);
+  });
+
+  it('never expires a finished game', () => {
+    const finished = fresh({ state: 'finished' });
+    expect(isExpired(finished, 1_000_000 + GAME_MAX_MS * 10)).toBe(false);
   });
 });
 
@@ -77,6 +88,14 @@ describe('resolveRole', () => {
     const r = resolveRole(playing, 'carol', 1_000_500);
     expect(r.role).toBe('spectator');
     expect(r.next).toBe(null);
+  });
+
+  it('claims P1 when a playing game has been abandoned past GAME_MAX_MS', () => {
+    const stuck = fresh({ state: 'playing', p2: { id: 'bob' } });
+    const r = resolveRole(stuck, 'carol', 1_000_000 + GAME_MAX_MS + 1);
+    expect(r.role).toBe('p1');
+    expect(r.next?.p1).toEqual({ id: 'carol' });
+    expect(r.next?.state).toBe('waiting');
   });
 
   it('returning player during play keeps their role', () => {
