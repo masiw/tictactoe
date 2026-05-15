@@ -1,0 +1,43 @@
+{
+  "rules": {
+    ".read": false,
+    ".write": false,
+    "game": {
+      ".read": true,
+      ".write": true,
+      ".validate": "newData.val() === null || newData.hasChildren(['state', 'p1', 'turn', 'createdAt'])",
+      "state": {
+        ".validate": "newData.isString() && (newData.val() === 'waiting' || newData.val() === 'playing' || newData.val() === 'finished')"
+      },
+      "turn": {
+        ".validate": "newData.isString() && (newData.val() === 'X' || newData.val() === 'O')"
+      },
+      "winner": {
+        ".validate": "newData.val() === 'X' || newData.val() === 'O' || newData.val() === 'draw'"
+      },
+      "createdAt": {
+        ".validate": "newData.isNumber() && newData.val() > 0"
+      },
+      "p1": {
+        ".validate": "newData.hasChild('id')",
+        "id": {
+          ".validate": "newData.isString() && newData.val().length > 0 && newData.val().length < 200"
+        },
+        "$other": { ".validate": false }
+      },
+      "p2": {
+        ".validate": "newData.hasChild('id')",
+        "id": {
+          ".validate": "newData.isString() && newData.val().length > 0 && newData.val().length < 200"
+        },
+        "$other": { ".validate": false }
+      },
+      "board": {
+        "$i": {
+          ".validate": "$i.matches(/^[0-8]$/) && newData.isString() && (newData.val() === 'X' || newData.val() === 'O')"
+        }
+      },
+      "$other": { ".validate": false }
+    }
+  }
+}

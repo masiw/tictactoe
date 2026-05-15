@@ -12,7 +12,11 @@ Guidance for Claude Code sessions in this repo (especially Claude Code on the we
 
 ## Env vars
 
-Firebase config comes from `VITE_FIREBASE_*` env vars (see `.env.example` and `SETUP.md`). They're public web-app keys — safe in client bundles — but never commit `.env.local`.
+Firebase config comes from `VITE_FIREBASE_*` env vars (see `.env.example` and `SETUP.md`). They're public web-app keys — safe in client bundles — but `.env.local` is gitignored and must stay that way. **Never re-add it to git** (no `git add -f .env.local`, no pasting values into committed files).
+
+## Firebase security rules
+
+`database.rules.json` at the repo root is the source of truth for the deployed Realtime Database rules. If you change the data model in `src/multiplayer.ts` (e.g. add a field to `GameState`), update `database.rules.json` in the same PR so the rules don't reject the new shape. The user re-publishes the rules in the Firebase Console after merge (see SETUP.md §6b).
 
 ## Commands
 
@@ -48,3 +52,4 @@ Use the `mcp__github__*` tools for all GitHub operations — there is no `gh` CL
 - `src/App.svelte` — UI; renders different states for P1/P2/spectator/expired/finished
 - `src/main.ts` — entry
 - `src/*.test.ts` — Vitest specs (pure logic only — no network)
+- `database.rules.json` — Firebase RTDB security rules (source of truth; deployed manually via Firebase Console)
