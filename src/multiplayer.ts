@@ -75,22 +75,60 @@ export function clientId(): string {
   return id;
 }
 
+// Firebase RTDB prunes properties whose value is null, and may also turn an
+// array with trailing nulls into an object keyed by index. Normalise raw
+// snapshot data back into the GameState shape the rest of the code expects.
+export function normalize(raw: unknown): GameState | null {
+  if (!raw || typeof raw !== 'object') return null;
+  const r = raw as Record<string, unknown>;
+  if (r.state !== 'waiting' && r.state !== 'playing' && r.state !== 'finished') {
+    return null;
+  }
+  return {
+    state: r.state,
+    p1: isPlayer(r.p1) ? r.p1 : null,
+    p2: isPlayer(r.p2) ? r.p2 : null,
+    board: normalizeBoard(r.board),
+    turn: r.turn === 'O' ? 'O' : 'X',
+    winner:
+      r.winner === 'X' || r.winner === 'O' || r.winner === 'draw'
+        ? r.winner
+        : null,
+    createdAt: typeof r.createdAt === 'number' ? r.createdAt : 0,
+  };
+}
+
+function isPlayer(v: unknown): v is Player {
+  return !!v && typeof v === 'object' && typeof (v as { id?: unknown }).id === 'string';
+}
+
+function normalizeBoard(b: unknown): Cell[] {
+  const empty = emptyBoard();
+  if (!b || typeof b !== 'object') return empty;
+  const indexed = b as Record<string | number, unknown>;
+  return empty.map((_, i) => {
+    const v = indexed[i] ?? indexed[String(i)];
+    return v === 'X' || v === 'O' ? v : null;
+  });
+}
+
 function gameRef() {
   return ref(getDb(), GAME_PATH);
 }
 
 export async function claimRole(myId: string, now: number): Promise<Role> {
   let resolved: Role = 'spectator';
-  await runTransaction(gameRef(), (current: GameState | null) => {
+  await runTransaction(gameRef(), (raw: unknown) => {
+    const current = normalize(raw);
     const { role, next } = resolveRole(current, myId, now);
     resolved = role;
-    return next ?? current;
+    return next ?? current ?? raw;
   });
   return resolved;
 }
 
 export function subscribeGame(cb: (state: GameState | null) => void): () => void {
-  return onValue(gameRef(), (snap) => cb((snap.val() as GameState | null) ?? null));
+  return onValue(gameRef(), (snap) => cb(normalize(snap.val())));
 }
 
 export type MoveOutcome = 'ok' | 'not-your-turn' | 'cell-taken' | 'not-playing';
@@ -100,10 +138,11 @@ export async function makeMove(
   myId: string,
 ): Promise<MoveOutcome> {
   let outcome: MoveOutcome = 'ok';
-  await runTransaction(gameRef(), (current: GameState | null) => {
+  await runTransaction(gameRef(), (raw: unknown) => {
+    const current = normalize(raw);
     if (!current || current.state !== 'playing') {
       outcome = 'not-playing';
-      return current;
+      return raw;
     }
     const mySymbol: 'X' | 'O' | null =
       current.p1?.id === myId ? 'X' : current.p2?.id === myId ? 'O' : null;

@@ -3,6 +3,7 @@ import { emptyBoard } from './game';
 import {
   RESERVATION_MS,
   isExpired,
+  normalize,
   resolveRole,
   type GameState,
 } from './multiplayer';
@@ -82,5 +83,68 @@ describe('resolveRole', () => {
     const playing = fresh({ state: 'playing', p2: { id: 'bob' } });
     expect(resolveRole(playing, 'alice', 1_000_500).role).toBe('p1');
     expect(resolveRole(playing, 'bob', 1_000_500).role).toBe('p2');
+  });
+});
+
+describe('normalize', () => {
+  it('returns null for null / undefined / non-object', () => {
+    expect(normalize(null)).toBe(null);
+    expect(normalize(undefined)).toBe(null);
+    expect(normalize('nope')).toBe(null);
+  });
+
+  it('returns null when state field is missing or invalid', () => {
+    expect(normalize({ p1: { id: 'a' }, createdAt: 1 })).toBe(null);
+    expect(normalize({ state: 'banana' })).toBe(null);
+  });
+
+  it('fills in board when Firebase pruned it (waiting game, empty board)', () => {
+    // Firebase strips an all-null array; the stored payload has no `board` key.
+    const raw = {
+      state: 'waiting',
+      p1: { id: 'alice' },
+      turn: 'X',
+      createdAt: 5,
+    };
+    expect(normalize(raw)?.board).toEqual(emptyBoard());
+  });
+
+  it('reconstructs board when Firebase stored it as an index-keyed object', () => {
+    const raw = {
+      state: 'playing',
+      p1: { id: 'a' },
+      p2: { id: 'b' },
+      board: { 0: 'X', 4: 'O' },
+      turn: 'X',
+      createdAt: 5,
+    };
+    expect(normalize(raw)?.board).toEqual([
+      'X', null, null, null, 'O', null, null, null, null,
+    ]);
+  });
+
+  it('coerces missing p2 / winner to null', () => {
+    const n = normalize({
+      state: 'waiting',
+      p1: { id: 'a' },
+      turn: 'X',
+      createdAt: 5,
+    });
+    expect(n?.p2).toBe(null);
+    expect(n?.winner).toBe(null);
+  });
+
+  it('rejects bogus board cell values', () => {
+    const n = normalize({
+      state: 'playing',
+      p1: { id: 'a' },
+      p2: { id: 'b' },
+      board: ['X', 'Q', 42, null, 'O', null, null, null, null],
+      turn: 'O',
+      createdAt: 5,
+    });
+    expect(n?.board).toEqual([
+      'X', null, null, null, 'O', null, null, null, null,
+    ]);
   });
 });
