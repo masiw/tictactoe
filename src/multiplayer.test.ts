@@ -22,6 +22,7 @@ const fresh = (overrides: Partial<GameState> = {}): GameState => ({
   winner: null,
   createdAt: T0,
   lastMoveAt: T0,
+  lastMove: null,
   ...overrides,
 });
 
@@ -194,6 +195,48 @@ describe('normalize', () => {
       lastMoveAt: 2,
     });
     expect(n?.board).toEqual(['X', null, null, null, 'O', null, null, null, null]);
+  });
+
+  it('parses lastMove only when it is an integer in [0, 8]', () => {
+    const valid = normalize({
+      state: 'playing',
+      p1: { id: 'a' },
+      p2: { id: 'b' },
+      turn: 'O',
+      createdAt: 1,
+      lastMoveAt: 2,
+      lastMove: 4,
+    });
+    expect(valid?.lastMove).toBe(4);
+
+    const negative = normalize({
+      state: 'waiting',
+      p1: { id: 'a' },
+      turn: 'X',
+      createdAt: 1,
+      lastMoveAt: 1,
+      lastMove: -1,
+    });
+    expect(negative?.lastMove).toBe(null);
+
+    const fraction = normalize({
+      state: 'waiting',
+      p1: { id: 'a' },
+      turn: 'X',
+      createdAt: 1,
+      lastMoveAt: 1,
+      lastMove: 3.5,
+    });
+    expect(fraction?.lastMove).toBe(null);
+
+    const missing = normalize({
+      state: 'waiting',
+      p1: { id: 'a' },
+      turn: 'X',
+      createdAt: 1,
+      lastMoveAt: 1,
+    });
+    expect(missing?.lastMove).toBe(null);
   });
 
   it('rejects bogus cell values', () => {
