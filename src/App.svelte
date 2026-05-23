@@ -221,10 +221,11 @@
   .cell:disabled {
     cursor: default;
   }
-  .cell.x {
-    color: #f87171;
-  }
+  .cell.x,
   .cell.o {
-    color: #60a5fa;
+    color: #f4f4f5;
+    text-shadow:
+      0 0 6px rgba(244, 244, 245, 0.9),
+      0 0 14px rgba(244, 244, 245, 0.5);
   }
 </style>
