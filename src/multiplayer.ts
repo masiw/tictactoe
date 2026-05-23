@@ -34,6 +34,7 @@ export type GameState = {
   winner: 'X' | 'O' | 'draw' | null;
   createdAt: number;
   lastMoveAt: number;
+  lastMove: number | null;
 };
 
 export type Role = 'p1' | 'p2';
@@ -153,6 +154,13 @@ export function normalize(raw: unknown): GameState | null {
         : null,
     createdAt,
     lastMoveAt: typeof r.lastMoveAt === 'number' ? r.lastMoveAt : createdAt,
+    lastMove:
+      typeof r.lastMove === 'number' &&
+      r.lastMove >= 0 &&
+      r.lastMove <= 8 &&
+      Number.isInteger(r.lastMove)
+        ? r.lastMove
+        : null,
   };
 }
 
@@ -208,6 +216,7 @@ function freshGame(myId: string, now: number): GameState {
     winner: null,
     createdAt: now,
     lastMoveAt: now,
+    lastMove: null,
   };
 }
 
@@ -337,6 +346,7 @@ export async function makeMove(
       winner: w ?? (draw ? 'draw' : null),
       state: isFinished ? 'finished' : 'playing',
       lastMoveAt: now,
+      lastMove: index,
     } as GameState;
   });
   if ((outcome as MoveOutcome) === 'finished') {
