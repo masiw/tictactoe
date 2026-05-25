@@ -69,15 +69,27 @@ The Firebase web SDK `apiKey` is *intentionally public* — it ships in the depl
 4. **API restrictions** → restrict the key to: *Firebase Realtime Database API*, *Identity Toolkit API*, *Token Service API*.
 5. Save. Propagation takes a few minutes.
 
-### b. Deploy the Realtime Database rules
+### b. Deploy the Realtime Database rules (automated)
 
 The intended rules live in `database.rules.json` at the repo root. They lock writes to `/games/$gameId`, validate the schema, and reject any other path.
 
+`.github/workflows/deploy-rules.yml` auto-deploys these rules to Firebase whenever `database.rules.json` (or `firebase.json`) changes on `main`. The workflow authenticates with the `FIREBASE_SERVICE_ACCOUNT` and `FIREBASE_PROJECT_ID` repository secrets — set those once (see "One-time setup for automated rules deploys" below) and you never need to touch the Firebase Console for rule changes again.
+
+#### One-time setup for automated rules deploys
+
+1. Google Cloud Console → **IAM & Admin → Service Accounts** in your Firebase project → **Create service account** (e.g. `github-actions-rules`). Grant role: **Firebase Realtime Database Admin**.
+2. On the new service account → **Keys → Add key → Create new key → JSON**. Download.
+3. GitHub → repo → **Settings → Secrets and variables → Actions** → add two repository secrets:
+   - `FIREBASE_SERVICE_ACCOUNT` — paste the entire JSON file contents.
+   - `FIREBASE_PROJECT_ID` — your Firebase project ID (e.g. `tictactoe-12345`).
+
+If you ever want to revoke automated deploys, delete the service account key in Google Cloud Console — the workflow will fail and rules will stop auto-deploying, but the rest of the app keeps working.
+
+#### Manual fallback (if you need to bypass CI for any reason)
+
 1. Firebase Console → your project → **Realtime Database → Rules** tab.
 2. Replace whatever's there with the contents of `database.rules.json`.
-3. Click **Publish**. The editor validates the JSON before saving.
-
-Repeat this whenever `database.rules.json` changes in a PR.
+3. Click **Publish**.
 
 After deploying the multi-game version, also delete any pre-existing data under `/game` (singular) from the **Data** tab — it's orphaned and will eventually be ignored, but cleanup keeps the DB tidy.
 

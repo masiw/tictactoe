@@ -16,7 +16,7 @@ Firebase config comes from `VITE_FIREBASE_*` env vars (see `.env.example` and `S
 
 ## Firebase security rules
 
-`database.rules.json` at the repo root is the source of truth for the deployed Realtime Database rules. If you change the data model in `src/multiplayer.ts` (e.g. add a field to `GameState`), update `database.rules.json` in the same PR so the rules don't reject the new shape. The user re-publishes the rules in the Firebase Console after merge (see SETUP.md §6b).
+`database.rules.json` at the repo root is the source of truth for the deployed Realtime Database rules. If you change the data model in `src/multiplayer.ts` (e.g. add a field to `GameState`), update `database.rules.json` in the same PR so the rules don't reject the new shape. The `.github/workflows/deploy-rules.yml` workflow auto-publishes the rules to Firebase whenever `database.rules.json` (or `firebase.json`) changes on `main`, using the `FIREBASE_SERVICE_ACCOUNT` and `FIREBASE_PROJECT_ID` repo secrets.
 
 ## Commands
 
@@ -52,4 +52,6 @@ Use the `mcp__github__*` tools for all GitHub operations — there is no `gh` CL
 - `src/App.svelte` — UI; renders loading / p1-waiting / p1-expired / playing / finished. No spectator role. Caches last non-null game state so the eager-deleted finished game still shows.
 - `src/main.ts` — entry
 - `src/*.test.ts` — Vitest specs (pure logic only — no network)
-- `database.rules.json` — Firebase RTDB security rules (source of truth; deployed manually via Firebase Console). Path: `/games/$gameId`.
+- `database.rules.json` — Firebase RTDB security rules (source of truth; deployed automatically by `.github/workflows/deploy-rules.yml`). Path: `/games/$gameId`.
+- `firebase.json` — points the Firebase CLI at `database.rules.json`.
+- `.github/workflows/deploy-rules.yml` — auto-deploys rules to Firebase on push to `main`.
