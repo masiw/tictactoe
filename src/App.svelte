@@ -158,6 +158,7 @@
           class="cell"
           class:x={cell === 'X'}
           class:o={cell === 'O'}
+          class:last={cell !== null && displayedGame.lastMove === i}
           on:click={() => onCellClick(i)}
           disabled={phase !== 'playing' || !myTurn || !!cell}
           aria-label={`cell ${i + 1}`}
@@ -227,5 +228,11 @@
     text-shadow:
       0 0 6px rgba(244, 244, 245, 0.9),
       0 0 14px rgba(244, 244, 245, 0.5);
+  }
+  .cell.last {
+    color: #fbbf24;
+    text-shadow:
+      0 0 8px rgba(251, 191, 36, 0.95),
+      0 0 18px rgba(251, 191, 36, 0.6);
   }
 </style>
