@@ -21,6 +21,7 @@
     type Tile,
   } from './dominoes';
   import OutcomeOverlay from './OutcomeOverlay.svelte';
+  import Pip from './Pip.svelte';
 
   export let navigate: (path: string) => void;
 
@@ -271,8 +272,8 @@
         <div class="board" role="list">
           {#each displayedGame.board as tile, i (i)}
             <span class="tile board-tile" role="listitem">
-              <span class="half">{tile[0]}</span>
-              <span class="half">{tile[1]}</span>
+              <span class="half"><Pip value={tile[0]} /></span>
+              <span class="half"><Pip value={tile[1]} /></span>
             </span>
           {/each}
         </div>
@@ -314,8 +315,8 @@
             disabled={!myTurn || (!cls.playable && displayedGame.board.length > 0) || actionInFlight}
             aria-label={`tile ${tile[0]} ${tile[1]}`}
           >
-            <span class="half">{tile[0]}</span>
-            <span class="half">{tile[1]}</span>
+            <span class="half"><Pip value={tile[0]} /></span>
+            <span class="half"><Pip value={tile[1]} /></span>
           </button>
         {/each}
       </div>
@@ -323,8 +324,8 @@
       <div class="hand">
         {#each myHand as tile, i (i)}
           <span class="tile hand-tile dim">
-            <span class="half">{tile[0]}</span>
-            <span class="half">{tile[1]}</span>
+            <span class="half"><Pip value={tile[0]} /></span>
+            <span class="half"><Pip value={tile[1]} /></span>
           </span>
         {/each}
       </div>
@@ -397,22 +398,21 @@
   }
   .tile {
     display: inline-flex;
-    height: 32px;
-    min-width: 56px;
+    height: 44px;
+    width: 76px;
     background: #27272a;
     color: #f4f4f5;
     border: 1px solid #3f3f46;
     border-radius: 6px;
     overflow: hidden;
+    padding: 0;
+    flex-shrink: 0;
   }
   .tile .half {
     flex: 1;
     display: flex;
-    align-items: center;
+    align-items: stretch;
     justify-content: center;
-    font-size: 1.05rem;
-    font-weight: 600;
-    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
   }
   .tile .half + .half {
     border-left: 1px solid #3f3f46;
