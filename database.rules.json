@@ -23,8 +23,11 @@
         "lastMoveAt": {
           ".validate": "newData.isNumber() && newData.val() > 0"
         },
-        "lastMove": {
+        "previousMove": {
           ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 8"
+        },
+        "previousMoveRevealed": {
+          ".validate": "newData.isBoolean()"
         },
         "p1": {
           ".validate": "newData.hasChild('id')",

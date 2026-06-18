@@ -34,7 +34,8 @@ export type GameState = {
   winner: 'X' | 'O' | 'draw' | null;
   createdAt: number;
   lastMoveAt: number;
-  lastMove: number | null;
+  previousMove: number | null;
+  previousMoveRevealed: boolean;
 };
 
 export type Role = 'p1' | 'p2';
@@ -154,13 +155,14 @@ export function normalize(raw: unknown): GameState | null {
         : null,
     createdAt,
     lastMoveAt: typeof r.lastMoveAt === 'number' ? r.lastMoveAt : createdAt,
-    lastMove:
-      typeof r.lastMove === 'number' &&
-      r.lastMove >= 0 &&
-      r.lastMove <= 8 &&
-      Number.isInteger(r.lastMove)
-        ? r.lastMove
+    previousMove:
+      typeof r.previousMove === 'number' &&
+      r.previousMove >= 0 &&
+      r.previousMove <= 8 &&
+      Number.isInteger(r.previousMove)
+        ? r.previousMove
         : null,
+    previousMoveRevealed: r.previousMoveRevealed === true,
   };
 }
 
@@ -216,7 +218,8 @@ function freshGame(myId: string, now: number): GameState {
     winner: null,
     createdAt: now,
     lastMoveAt: now,
-    lastMove: null,
+    previousMove: null,
+    previousMoveRevealed: false,
   };
 }
 
@@ -346,7 +349,8 @@ export async function makeMove(
       winner: w ?? (draw ? 'draw' : null),
       state: isFinished ? 'finished' : 'playing',
       lastMoveAt: now,
-      lastMove: index,
+      previousMove: index,
+      previousMoveRevealed: false,
     } as GameState;
   });
   if ((outcome as MoveOutcome) === 'finished') {
@@ -372,4 +376,29 @@ export async function declareForfeit(
     scheduleFinishedDelete(gameId);
   }
   return won;
+}
+
+// Toggles previousMoveRevealed to true on the shared game so both
+// players see the most recent move highlighted in red. Aborts (returns
+// the current value unchanged) if there is no previous move yet or the
+// flag is already true.
+export async function revealPreviousMove(
+  gameId: string,
+  myId: string,
+): Promise<boolean> {
+  let toggled = false;
+  await runTransaction(gameRef(gameId), (raw: unknown) => {
+    const cur = normalize(raw);
+    if (
+      !cur ||
+      cur.previousMove === null ||
+      cur.previousMoveRevealed ||
+      !mySymbol(cur, myId)
+    ) {
+      return cur ?? raw;
+    }
+    toggled = true;
+    return { ...cur, previousMoveRevealed: true } as GameState;
+  });
+  return toggled;
 }
