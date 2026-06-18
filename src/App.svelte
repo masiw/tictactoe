@@ -222,17 +222,22 @@
   .cell:disabled {
     cursor: default;
   }
-  .cell.x,
-  .cell.o {
-    color: #f4f4f5;
-    text-shadow:
-      0 0 6px rgba(244, 244, 245, 0.9),
-      0 0 14px rgba(244, 244, 245, 0.5);
-  }
-  .cell.last {
+  .cell.x {
     color: #fbbf24;
     text-shadow:
-      0 0 8px rgba(251, 191, 36, 0.95),
-      0 0 18px rgba(251, 191, 36, 0.6);
+      0 0 6px rgba(251, 191, 36, 0.9),
+      0 0 14px rgba(251, 191, 36, 0.5);
+  }
+  .cell.o {
+    color: #60a5fa;
+    text-shadow:
+      0 0 6px rgba(96, 165, 250, 0.9),
+      0 0 14px rgba(96, 165, 250, 0.5);
+  }
+  .cell.last {
+    color: #f87171;
+    text-shadow:
+      0 0 8px rgba(248, 113, 113, 0.95),
+      0 0 18px rgba(248, 113, 113, 0.6);
   }
 </style>
