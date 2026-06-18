@@ -22,7 +22,8 @@ const fresh = (overrides: Partial<GameState> = {}): GameState => ({
   winner: null,
   createdAt: T0,
   lastMoveAt: T0,
-  lastMove: null,
+  previousMove: null,
+  previousMoveRevealed: false,
   ...overrides,
 });
 
@@ -197,7 +198,7 @@ describe('normalize', () => {
     expect(n?.board).toEqual(['X', null, null, null, 'O', null, null, null, null]);
   });
 
-  it('parses lastMove only when it is an integer in [0, 8]', () => {
+  it('parses previousMove only when it is an integer in [0, 8]', () => {
     const valid = normalize({
       state: 'playing',
       p1: { id: 'a' },
@@ -205,9 +206,9 @@ describe('normalize', () => {
       turn: 'O',
       createdAt: 1,
       lastMoveAt: 2,
-      lastMove: 4,
+      previousMove: 4,
     });
-    expect(valid?.lastMove).toBe(4);
+    expect(valid?.previousMove).toBe(4);
 
     const negative = normalize({
       state: 'waiting',
@@ -215,9 +216,9 @@ describe('normalize', () => {
       turn: 'X',
       createdAt: 1,
       lastMoveAt: 1,
-      lastMove: -1,
+      previousMove: -1,
     });
-    expect(negative?.lastMove).toBe(null);
+    expect(negative?.previousMove).toBe(null);
 
     const fraction = normalize({
       state: 'waiting',
@@ -225,9 +226,9 @@ describe('normalize', () => {
       turn: 'X',
       createdAt: 1,
       lastMoveAt: 1,
-      lastMove: 3.5,
+      previousMove: 3.5,
     });
-    expect(fraction?.lastMove).toBe(null);
+    expect(fraction?.previousMove).toBe(null);
 
     const missing = normalize({
       state: 'waiting',
@@ -236,7 +237,53 @@ describe('normalize', () => {
       createdAt: 1,
       lastMoveAt: 1,
     });
-    expect(missing?.lastMove).toBe(null);
+    expect(missing?.previousMove).toBe(null);
+  });
+
+  it('parses previousMoveRevealed strictly as a boolean true', () => {
+    const t = normalize({
+      state: 'playing',
+      p1: { id: 'a' },
+      p2: { id: 'b' },
+      turn: 'O',
+      createdAt: 1,
+      lastMoveAt: 2,
+      previousMove: 0,
+      previousMoveRevealed: true,
+    });
+    expect(t?.previousMoveRevealed).toBe(true);
+
+    const f = normalize({
+      state: 'playing',
+      p1: { id: 'a' },
+      p2: { id: 'b' },
+      turn: 'O',
+      createdAt: 1,
+      lastMoveAt: 2,
+      previousMove: 0,
+      previousMoveRevealed: false,
+    });
+    expect(f?.previousMoveRevealed).toBe(false);
+
+    const missing = normalize({
+      state: 'waiting',
+      p1: { id: 'a' },
+      turn: 'X',
+      createdAt: 1,
+      lastMoveAt: 1,
+    });
+    expect(missing?.previousMoveRevealed).toBe(false);
+
+    const bogus = normalize({
+      state: 'playing',
+      p1: { id: 'a' },
+      p2: { id: 'b' },
+      turn: 'O',
+      createdAt: 1,
+      lastMoveAt: 2,
+      previousMoveRevealed: 'yes',
+    });
+    expect(bogus?.previousMoveRevealed).toBe(false);
   });
 
   it('rejects bogus cell values', () => {

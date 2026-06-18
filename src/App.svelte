@@ -10,6 +10,7 @@
     forgetGame,
     makeMove,
     mySymbol as symbolOf,
+    revealPreviousMove,
     shouldForfeit,
     subscribeGame,
     type GameState,
@@ -35,6 +36,14 @@
   $: clockMs = displayedGame
     ? Math.max(0, displayedGame.lastMoveAt + MOVE_CLOCK_MS - now)
     : 0;
+  $: showRevealButton =
+    !!mySym &&
+    !!displayedGame &&
+    (displayedGame.state === 'playing' || displayedGame.state === 'finished');
+  $: canRevealPrevious =
+    !!displayedGame &&
+    displayedGame.previousMove !== null &&
+    !displayedGame.previousMoveRevealed;
 
   function computePhase(
     shown: GameState | null,
@@ -88,6 +97,11 @@
   function onCellClick(i: number) {
     if (!gameId || phase !== 'playing' || !myTurn) return;
     void makeMove(gameId, i, myId, Date.now());
+  }
+
+  function onRevealPrevious() {
+    if (!gameId || !canRevealPrevious) return;
+    void revealPreviousMove(gameId, myId);
   }
 
   async function maybeForfeit() {
@@ -158,7 +172,9 @@
           class="cell"
           class:x={cell === 'X'}
           class:o={cell === 'O'}
-          class:last={cell !== null && displayedGame.lastMove === i}
+          class:last={cell !== null
+            && displayedGame.previousMove === i
+            && displayedGame.previousMoveRevealed}
           on:click={() => onCellClick(i)}
           disabled={phase !== 'playing' || !myTurn || !!cell}
           aria-label={`cell ${i + 1}`}
@@ -169,6 +185,15 @@
     </div>
     {#if mySym}
       <p class="role">You are {mySym}.</p>
+    {/if}
+    {#if showRevealButton}
+      <button
+        class="reveal"
+        on:click={onRevealPrevious}
+        disabled={!canRevealPrevious}
+      >
+        Show previous move
+      </button>
     {/if}
   {/if}
 </main>
@@ -239,5 +264,22 @@
     text-shadow:
       0 0 8px rgba(248, 113, 113, 0.95),
       0 0 18px rgba(248, 113, 113, 0.6);
+  }
+  .reveal {
+    margin-top: 1rem;
+    padding: 0.5rem 1rem;
+    font-size: 0.95rem;
+    background: #18181b;
+    color: #f4f4f5;
+    border: 1px solid #3f3f46;
+    border-radius: 6px;
+    cursor: pointer;
+  }
+  .reveal:hover:not(:disabled) {
+    background: #27272a;
+  }
+  .reveal:disabled {
+    color: #52525b;
+    cursor: default;
   }
 </style>
