@@ -5,6 +5,7 @@
 
   const games: GameEntry[] = [
     { label: 'Tic-Tac-Toe', path: '/tictactoe' },
+    { label: 'Dominoes', path: '/dominoes' },
   ];
 </script>
 
