@@ -17,6 +17,22 @@
     type Role,
   } from './multiplayer';
 
+  type Sparkle = {
+    cx: number;
+    cy: number;
+    dx: number;
+    dy: number;
+    color: string;
+    delay: number;
+  };
+  type Drop = {
+    x: number;
+    delay: number;
+    duration: number;
+  };
+
+  const OUTCOME_ANIMATION_MS = 3000;
+
   let gameId: string | null = null;
   let role: Role | null = null;
   let liveGame: GameState | null = null;
@@ -28,6 +44,11 @@
   let unsubscribe: (() => void) | null = null;
   let tick: ReturnType<typeof setInterval> | null = null;
   let forfeitInFlight = false;
+  let outcomeAnimation: 'fireworks' | 'rain' | null = null;
+  let sparkles: Sparkle[] = [];
+  let raindrops: Drop[] = [];
+  let lastOutcomeGameId: string | null = null;
+  let outcomeAnimationTimer: ReturnType<typeof setTimeout> | null = null;
 
   $: displayedGame = liveGame ?? lastKnownGame;
   $: mySym = role === 'p1' ? 'X' : role === 'p2' ? 'O' : null;
@@ -44,6 +65,71 @@
     !!displayedGame &&
     displayedGame.previousMove !== null &&
     !displayedGame.previousMoveRevealed;
+
+  $: maybeTriggerOutcomeAnimation(displayedGame, mySym, gameId);
+
+  function makeFireworks(): Sparkle[] {
+    const palette = [
+      '#fbbf24', '#f87171', '#60a5fa', '#a78bfa', '#34d399', '#f4f4f5', '#fb923c',
+    ];
+    const out: Sparkle[] = [];
+    const bursts = 3;
+    const perBurst = 24;
+    for (let b = 0; b < bursts; b++) {
+      const cx = 15 + Math.random() * 70;
+      const cy = 18 + Math.random() * 35;
+      const burstDelay = b * 700;
+      for (let i = 0; i < perBurst; i++) {
+        const angle = (Math.PI * 2 * i) / perBurst + Math.random() * 0.4;
+        const dist = 80 + Math.random() * 90;
+        out.push({
+          cx,
+          cy,
+          dx: Math.cos(angle) * dist,
+          dy: Math.sin(angle) * dist,
+          color: palette[Math.floor(Math.random() * palette.length)],
+          delay: burstDelay,
+        });
+      }
+    }
+    return out;
+  }
+
+  function makeRain(): Drop[] {
+    const out: Drop[] = [];
+    const count = 60;
+    for (let i = 0; i < count; i++) {
+      out.push({
+        x: Math.random() * 100,
+        delay: Math.random() * (OUTCOME_ANIMATION_MS - 500),
+        duration: 600 + Math.random() * 600,
+      });
+    }
+    return out;
+  }
+
+  function maybeTriggerOutcomeAnimation(
+    g: GameState | null,
+    sym: string | null,
+    id: string | null,
+  ) {
+    if (!g || g.state !== 'finished' || !sym || !id) return;
+    if (lastOutcomeGameId === id) return;
+    lastOutcomeGameId = id;
+    if (g.winner === sym) {
+      sparkles = makeFireworks();
+      outcomeAnimation = 'fireworks';
+    } else if (g.winner === 'X' || g.winner === 'O') {
+      raindrops = makeRain();
+      outcomeAnimation = 'rain';
+    } else {
+      return;
+    }
+    if (outcomeAnimationTimer) clearTimeout(outcomeAnimationTimer);
+    outcomeAnimationTimer = setTimeout(() => {
+      outcomeAnimation = null;
+    }, OUTCOME_ANIMATION_MS);
+  }
 
   function computePhase(
     shown: GameState | null,
@@ -154,6 +240,7 @@
   onDestroy(() => {
     unsubscribe?.();
     if (tick) clearInterval(tick);
+    if (outcomeAnimationTimer) clearTimeout(outcomeAnimationTimer);
   });
 </script>
 
@@ -197,6 +284,26 @@
     {/if}
   {/if}
 </main>
+
+{#if outcomeAnimation === 'fireworks'}
+  <div class="overlay" aria-hidden="true">
+    {#each sparkles as s, i (i)}
+      <span
+        class="sparkle"
+        style="left: {s.cx}%; top: {s.cy}%; background: {s.color}; box-shadow: 0 0 6px {s.color}; --dx: {s.dx}px; --dy: {s.dy}px; animation-delay: {s.delay}ms"
+      ></span>
+    {/each}
+  </div>
+{:else if outcomeAnimation === 'rain'}
+  <div class="overlay" aria-hidden="true">
+    {#each raindrops as d, i (i)}
+      <span
+        class="drop"
+        style="left: {d.x}vw; animation-delay: {d.delay}ms; animation-duration: {d.duration}ms"
+      ></span>
+    {/each}
+  </div>
+{/if}
 
 <style>
   :global(html),
@@ -281,5 +388,55 @@
   .reveal:disabled {
     color: #52525b;
     cursor: default;
+  }
+  .overlay {
+    position: fixed;
+    inset: 0;
+    pointer-events: none;
+    z-index: 10;
+    overflow: hidden;
+  }
+  .sparkle {
+    position: absolute;
+    width: 6px;
+    height: 6px;
+    margin: -3px 0 0 -3px;
+    border-radius: 50%;
+    opacity: 0;
+    animation: sparkle-fly 1100ms ease-out forwards;
+  }
+  @keyframes sparkle-fly {
+    0% {
+      opacity: 0;
+      transform: translate(0, 0) scale(0.4);
+    }
+    10% {
+      opacity: 1;
+    }
+    100% {
+      opacity: 0;
+      transform: translate(var(--dx), var(--dy)) scale(1.15);
+    }
+  }
+  .drop {
+    position: absolute;
+    top: -20px;
+    width: 2px;
+    height: 14px;
+    border-radius: 1px;
+    background: linear-gradient(
+      180deg,
+      rgba(96, 165, 250, 0),
+      rgba(96, 165, 250, 0.95)
+    );
+    animation: drop-fall linear forwards;
+  }
+  @keyframes drop-fall {
+    from {
+      transform: translateY(0);
+    }
+    to {
+      transform: translateY(calc(100vh + 40px));
+    }
   }
 </style>
