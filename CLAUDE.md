@@ -51,9 +51,16 @@ Use the `mcp__github__*` tools for all GitHub operations — there is no `gh` CL
 - `src/firebase.ts` — Firebase init + `getDb()`
 - `src/multiplayer.ts` — Tic-Tac-Toe multiplayer primitives. Data model: `/games/{pushKey}`. `planMatch`, `claimMatch`, `makeMove`, `declareForfeit`, `subscribeGame`, `shouldForfeit`, `isExpired`, `revealPreviousMove`. Move clock is `MOVE_CLOCK_MS` (2 min) tied to `lastMoveAt`.
 - `src/dominoesMultiplayer.ts` — Dominoes multiplayer primitives. Data model: `/dominoes/{pushKey}` with serialized tile chains (`board: string`, `p1.hand`/`p2.hand: string`). Mirrors the matchmaking shape of `multiplayer.ts`. `applyAction` handles both `place` and `pass`; ends the game when a hand empties or both players consecutively pass (blocked → lower pip total wins, tie is a draw).
-- `src/App.svelte` — tiny URL-path router. Renders `Home` on `/`, `TicTacToe` on `/tictactoe`, `Dominoes` on `/dominoes`. Owns the global `html`/`body` styles. Handles `popstate` for browser back/forward.
+- `src/App.svelte` — tiny URL router. Tracks `location.pathname` and `location.search` reactively. Routes:
+  - `/` → `Home`
+  - `/tictactoe`, `/dominoes` (no `mode` param) → `GameSettings`
+  - `/tictactoe?mode=network` → `TicTacToe` · `?mode=single` → `TicTacToeSingle`
+  - `/dominoes?mode=network` → `Dominoes` · `?mode=single` → `DominoesSingle`
+  Owns the global `html`/`body` styles. Handles `popstate` for browser back/forward.
 - `src/Home.svelte` — game lobby. Receives `navigate` from `App`.
-- `src/TicTacToe.svelte` / `src/Dominoes.svelte` — per-game UI components. Own their gameplay state and subscriptions. Receive `navigate` and use it for the "← Games" link.
+- `src/GameSettings.svelte` — settings page shown when a game route has no `mode` param. Lets the player pick **Over the network** or **On a single device**; "Start game" navigates to `/{game}?mode={mode}`. Settings live in URL params only — no localStorage / cookies.
+- `src/TicTacToe.svelte` / `src/Dominoes.svelte` — networked multiplayer UI components. Own gameplay state, Firebase subscriptions, forfeit detection, animations.
+- `src/TicTacToeSingle.svelte` / `src/DominoesSingle.svelte` — same-device variants. Pure local state, no Firebase. Tic-Tac-Toe single is straightforward turn-take; Dominoes single uses a `pass-device` phase between turns so the receiving player taps **Ready** before their hand is revealed, preserving hand privacy.
 - `src/OutcomeOverlay.svelte` — shared win/lose animation. Pass `outcome="fireworks" | "rain" | null`; parent controls the 3-second timer that resets it to null.
 - `src/main.ts` — entry
 - `src/*.test.ts` — Vitest specs (pure logic only — no network)
