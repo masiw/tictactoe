@@ -1,5 +1,6 @@
 <script lang="ts">
   import { onDestroy, onMount } from 'svelte';
+  import Dominoes from './Dominoes.svelte';
   import Home from './Home.svelte';
   import TicTacToe from './TicTacToe.svelte';
 
@@ -31,6 +32,8 @@
 
 {#if path === '/tictactoe'}
   <TicTacToe {navigate} />
+{:else if path === '/dominoes'}
+  <Dominoes {navigate} />
 {:else}
   <Home {navigate} />
 {/if}

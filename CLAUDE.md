@@ -46,12 +46,15 @@ Use the `mcp__github__*` tools for all GitHub operations — there is no `gh` CL
 
 ## Project layout
 
-- `src/game.ts` — pure game logic, fully unit-tested
+- `src/game.ts` — pure Tic-Tac-Toe logic, fully unit-tested
+- `src/dominoes.ts` — pure Dominoes logic (`fullSet`, `dealHands`, `tilePlayability`, `placeOnRight`/`placeOnLeft`, `pipSum`, tile serialization), fully unit-tested
 - `src/firebase.ts` — Firebase init + `getDb()`
-- `src/multiplayer.ts` — shared-state primitives. Data model: `/games/{pushKey}` (top of stack = newest push key). Key functions: `planMatch` (pure matchmaking + lazy-sweep selection), `claimMatch` (page-load entry — rejoin / join / create), `makeMove`, `declareForfeit`, `subscribeGame`, `shouldForfeit`, `isExpired`. Move clock is `MOVE_CLOCK_MS` (2 min) tied to `lastMoveAt`.
-- `src/App.svelte` — tiny URL-path router. Renders `Home` on `/`, `TicTacToe` on `/tictactoe`. Owns the global `html`/`body` styles. Handles `popstate` for browser back/forward.
-- `src/Home.svelte` — game lobby: title plus a list of buttons, one per available game (currently just Tic-Tac-Toe). Receives `navigate` from `App`.
-- `src/TicTacToe.svelte` — the Tic-Tac-Toe game UI. Owns all the gameplay state and subscriptions; renders loading / p1-waiting / p1-expired / playing / finished. Caches last non-null game state so the eager-deleted finished game still shows. Receives `navigate` from `App` (used by the "← Games" link).
+- `src/multiplayer.ts` — Tic-Tac-Toe multiplayer primitives. Data model: `/games/{pushKey}`. `planMatch`, `claimMatch`, `makeMove`, `declareForfeit`, `subscribeGame`, `shouldForfeit`, `isExpired`, `revealPreviousMove`. Move clock is `MOVE_CLOCK_MS` (2 min) tied to `lastMoveAt`.
+- `src/dominoesMultiplayer.ts` — Dominoes multiplayer primitives. Data model: `/dominoes/{pushKey}` with serialized tile chains (`board: string`, `p1.hand`/`p2.hand: string`). Mirrors the matchmaking shape of `multiplayer.ts`. `applyAction` handles both `place` and `pass`; ends the game when a hand empties or both players consecutively pass (blocked → lower pip total wins, tie is a draw).
+- `src/App.svelte` — tiny URL-path router. Renders `Home` on `/`, `TicTacToe` on `/tictactoe`, `Dominoes` on `/dominoes`. Owns the global `html`/`body` styles. Handles `popstate` for browser back/forward.
+- `src/Home.svelte` — game lobby. Receives `navigate` from `App`.
+- `src/TicTacToe.svelte` / `src/Dominoes.svelte` — per-game UI components. Own their gameplay state and subscriptions. Receive `navigate` and use it for the "← Games" link.
+- `src/OutcomeOverlay.svelte` — shared win/lose animation. Pass `outcome="fireworks" | "rain" | null`; parent controls the 3-second timer that resets it to null.
 - `src/main.ts` — entry
 - `src/*.test.ts` — Vitest specs (pure logic only — no network)
 - `database.rules.json` — Firebase RTDB security rules (source of truth; deployed automatically by `.github/workflows/deploy-rules.yml`). Path: `/games/$gameId`.
