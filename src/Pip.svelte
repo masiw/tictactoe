@@ -1,14 +1,17 @@
 <script lang="ts">
   export let value: number;
+  export let orientation: 'horizontal' | 'vertical' = 'horizontal';
 
-  // Dot positions in a 3x3 grid laid out top-to-bottom, left-to-right:
+  // 3x3 grid layout (positions 1..9 laid out row by row):
   //   1 2 3
   //   4 5 6
   //   7 8 9
-  // 2 / 3 use the anti-diagonal (3, 7) so they read like a real die.
-  // 6 uses two columns of three so the half doesn't look squashed when the
-  // tile half is taller than it is wide.
-  const positions: Record<number, number[]> = {
+  //
+  // The vertical map is the horizontal map rotated 90deg clockwise, which
+  // matches what you'd see if you physically turned a real domino tile onto
+  // its short edge — 2/3 flip from anti-diagonal to diagonal, 6 flips from
+  // two columns of three to two rows of three, etc.
+  const positionsHorizontal: Record<number, number[]> = {
     0: [],
     1: [5],
     2: [3, 7],
@@ -17,7 +20,18 @@
     5: [1, 3, 5, 7, 9],
     6: [1, 4, 7, 3, 6, 9],
   };
+  const positionsVertical: Record<number, number[]> = {
+    0: [],
+    1: [5],
+    2: [1, 9],
+    3: [1, 5, 9],
+    4: [1, 3, 7, 9],
+    5: [1, 3, 5, 7, 9],
+    6: [1, 2, 3, 7, 8, 9],
+  };
 
+  $: positions =
+    orientation === 'vertical' ? positionsVertical : positionsHorizontal;
   $: dots = new Set(positions[value] ?? []);
 </script>
 

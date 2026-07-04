@@ -16,6 +16,7 @@
   } from './dominoesMultiplayer';
   import {
     hasAnyPlayable,
+    snakeLayout,
     tileEquals,
     tilePlayability,
     type Tile,
@@ -43,6 +44,12 @@
   let outcomeAnimationTimer: ReturnType<typeof setTimeout> | null = null;
   let pendingTile: Tile | null = null;
   let actionInFlight = false;
+  let boardContainerWidth = 320;
+
+  $: boardLayout = snakeLayout(
+    displayedGame?.board?.length ?? 0,
+    Math.max(boardContainerWidth, 80),
+  );
 
   $: displayedGame = liveGame ?? lastKnownGame;
   $: myHand = displayedGame
@@ -265,15 +272,37 @@
       <p class="opponent">Opponent has {oppHandCount} {oppHandCount === 1 ? 'tile' : 'tiles'}.</p>
     {/if}
 
-    <div class="board-wrap">
+    <div class="board-wrap" bind:clientWidth={boardContainerWidth}>
       {#if displayedGame.board.length === 0}
         <p class="empty-board">No tiles played yet.</p>
       {:else}
-        <div class="board" role="list">
-          {#each displayedGame.board as tile, i (i)}
-            <span class="tile board-tile" role="listitem">
-              <span class="half"><Pip value={tile[0]} /></span>
-              <span class="half"><Pip value={tile[1]} /></span>
+        <div
+          class="board"
+          role="list"
+          style="height: {boardLayout.height}px"
+        >
+          {#each boardLayout.placements as p, i (i)}
+            <span
+              class="tile board-tile"
+              class:tile-vert={p.orientation === 'vertical'}
+              role="listitem"
+              style="left: {p.x}px; top: {p.y}px"
+            >
+              {#if p.reverse}
+                <span class="half"
+                  ><Pip value={displayedGame.board[i][1]} orientation={p.orientation} /></span
+                >
+                <span class="half"
+                  ><Pip value={displayedGame.board[i][0]} orientation={p.orientation} /></span
+                >
+              {:else}
+                <span class="half"
+                  ><Pip value={displayedGame.board[i][0]} orientation={p.orientation} /></span
+                >
+                <span class="half"
+                  ><Pip value={displayedGame.board[i][1]} orientation={p.orientation} /></span
+                >
+              {/if}
             </span>
           {/each}
         </div>
@@ -383,7 +412,6 @@
   }
   .board-wrap {
     margin: 0.5rem 0;
-    overflow-x: auto;
     padding: 0.5rem 0;
   }
   .empty-board {
@@ -392,9 +420,8 @@
     margin: 0.75rem 0;
   }
   .board {
-    display: inline-flex;
-    gap: 4px;
-    padding: 0 0.5rem;
+    position: relative;
+    width: 100%;
   }
   .tile {
     display: inline-flex;
@@ -407,6 +434,7 @@
     overflow: hidden;
     padding: 0;
     flex-shrink: 0;
+    flex-direction: row;
   }
   .tile .half {
     flex: 1;
@@ -416,9 +444,20 @@
   }
   .tile .half + .half {
     border-left: 1px solid #3f3f46;
+    border-top: none;
   }
   .board-tile {
     background: #18181b;
+    position: absolute;
+  }
+  .board-tile.tile-vert {
+    width: 44px;
+    height: 76px;
+    flex-direction: column;
+  }
+  .board-tile.tile-vert .half + .half {
+    border-left: none;
+    border-top: 1px solid #3f3f46;
   }
   .hand {
     display: flex;
