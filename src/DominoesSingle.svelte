@@ -334,9 +334,9 @@
     display: inline-flex;
     height: 44px;
     width: 76px;
-    background: #27272a;
-    color: #f4f4f5;
-    border: 1px solid #3f3f46;
+    background: #f4f4f5;
+    color: #18181b;
+    border: 1px solid #d4d4d8;
     border-radius: 6px;
     overflow: hidden;
     padding: 0;
@@ -350,11 +350,11 @@
     justify-content: center;
   }
   .tile .half + .half {
-    border-left: 1px solid #3f3f46;
+    border-left: 1px solid #d4d4d8;
     border-top: none;
   }
   .board-tile {
-    background: #18181b;
+    background: #f4f4f5;
     position: absolute;
   }
   .board-tile.tile-vert {
@@ -364,7 +364,7 @@
   }
   .board-tile.tile-vert .half + .half {
     border-left: none;
-    border-top: 1px solid #3f3f46;
+    border-top: 1px solid #d4d4d8;
   }
   .hand {
     display: flex;
@@ -377,7 +377,7 @@
     cursor: pointer;
   }
   .hand-tile:hover:not(:disabled) {
-    background: #3f3f46;
+    background: #e4e4e7;
   }
   .hand-tile:disabled {
     cursor: default;
