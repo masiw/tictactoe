@@ -127,3 +127,110 @@ export function parseTiles(raw: unknown): Tile[] {
   }
   return out;
 }
+
+// --- Snake board layout ---
+//
+// The chain grows horizontally until adding another tile would exceed the
+// container width. It then turns "downward" with two vertical tiles and
+// continues horizontally in the opposite direction. When that row would
+// exceed the container again it turns down again and reverses. Since tile
+// matching only cares about pip values, not orientation, the snake respects
+// the game rules — it's purely a spatial layout.
+
+export type TileOrientation = 'horizontal' | 'vertical';
+
+export type TilePlacement = {
+  x: number;
+  y: number;
+  orientation: TileOrientation;
+  // For horizontal tiles going leftward, the two halves swap visually so
+  // that the "connect-back" pip (tile[0]) still faces the previous tile.
+  reverse: boolean;
+};
+
+export type SnakeLayout = {
+  placements: TilePlacement[];
+  width: number;
+  height: number;
+};
+
+export const TILE_HORIZ_WIDTH = 76;
+export const TILE_HORIZ_HEIGHT = 44;
+export const TILE_VERT_WIDTH = 44;
+export const TILE_VERT_HEIGHT = 76;
+export const TILE_GAP = 4;
+
+export function snakeLayout(count: number, containerWidth: number): SnakeLayout {
+  if (count === 0) return { placements: [], width: 0, height: 0 };
+
+  const HW = TILE_HORIZ_WIDTH;
+  const HH = TILE_HORIZ_HEIGHT;
+  const VW = TILE_VERT_WIDTH;
+  const VH = TILE_VERT_HEIGHT;
+  const GAP = TILE_GAP;
+
+  // How many horizontal tiles fit across the container in one row.
+  const K = Math.max(1, Math.floor((containerWidth + GAP) / (HW + GAP)));
+
+  const placements: TilePlacement[] = [];
+  let i = 0;
+  let direction: 1 | -1 = 1; // 1 = rightward, -1 = leftward
+  let currentY = 0;
+  // Where the first horizontal tile of the current segment sits.
+  let firstHorizontalX = 0;
+
+  while (i < count) {
+    const segmentSize = Math.min(K, count - i);
+    for (let j = 0; j < segmentSize; j++) {
+      const x = firstHorizontalX + direction * j * (HW + GAP);
+      placements.push({
+        x,
+        y: currentY,
+        orientation: 'horizontal',
+        reverse: direction === -1,
+      });
+      i++;
+    }
+    if (i >= count) break;
+
+    // Turn: two vertical tiles stacked below the segment's end.
+    const lastHorizontalX =
+      firstHorizontalX + direction * (segmentSize - 1) * (HW + GAP);
+    const verticalX =
+      direction === 1 ? lastHorizontalX + HW - VW : lastHorizontalX;
+
+    const firstVerticalY = currentY + HH + GAP;
+    placements.push({
+      x: verticalX,
+      y: firstVerticalY,
+      orientation: 'vertical',
+      reverse: false,
+    });
+    i++;
+    if (i >= count) break;
+
+    const secondVerticalY = firstVerticalY + VH + GAP;
+    placements.push({
+      x: verticalX,
+      y: secondVerticalY,
+      orientation: 'vertical',
+      reverse: false,
+    });
+    i++;
+    if (i >= count) break;
+
+    direction = (direction === 1 ? -1 : 1) as 1 | -1;
+    currentY = secondVerticalY + VH + GAP;
+    firstHorizontalX = direction === 1 ? verticalX : verticalX + VW - HW;
+  }
+
+  let maxX = 0;
+  let maxY = 0;
+  for (const p of placements) {
+    const w = p.orientation === 'horizontal' ? HW : VW;
+    const h = p.orientation === 'horizontal' ? HH : VH;
+    if (p.x + w > maxX) maxX = p.x + w;
+    if (p.y + h > maxY) maxY = p.y + h;
+  }
+  return { placements, width: maxX, height: maxY };
+}

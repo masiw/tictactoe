@@ -2,6 +2,11 @@ import { describe, it, expect } from 'vitest';
 import {
   HAND_SIZE,
   SET_SIZE,
+  TILE_GAP,
+  TILE_HORIZ_HEIGHT,
+  TILE_HORIZ_WIDTH,
+  TILE_VERT_HEIGHT,
+  TILE_VERT_WIDTH,
   dealHands,
   fullSet,
   hasAnyPlayable,
@@ -14,6 +19,7 @@ import {
   serializeTile,
   serializeTiles,
   shuffle,
+  snakeLayout,
   tileEquals,
   tilePlayability,
   type Tile,
@@ -155,6 +161,71 @@ describe('serialize / parse round-trip', () => {
   });
   it('skips invalid segments without crashing', () => {
     expect(parseTiles('3-5|foo|2-6')).toEqual([[3, 5], [2, 6]]);
+  });
+});
+
+describe('snakeLayout', () => {
+  // With 340 px of space and 76 px horizontal tiles + 4 px gap, K = 4.
+  const WIDE = 340;
+
+  it('is empty for a zero-tile board', () => {
+    const l = snakeLayout(0, WIDE);
+    expect(l.placements).toEqual([]);
+    expect(l.height).toBe(0);
+  });
+
+  it('lays a short chain out along one horizontal row', () => {
+    const l = snakeLayout(3, WIDE);
+    expect(l.placements.length).toBe(3);
+    expect(l.placements.every((p) => p.orientation === 'horizontal' && !p.reverse)).toBe(true);
+    // Tiles march right by (HW + GAP) each step.
+    expect(l.placements[0].x).toBe(0);
+    expect(l.placements[1].x).toBe(TILE_HORIZ_WIDTH + TILE_GAP);
+    expect(l.placements[2].x).toBe(2 * (TILE_HORIZ_WIDTH + TILE_GAP));
+    expect(l.height).toBe(TILE_HORIZ_HEIGHT);
+  });
+
+  it('turns down with two vertical tiles when the row is full', () => {
+    // Row 0 = 4 horizontals (fills 4), tile 5 starts the vertical turn.
+    const l = snakeLayout(5, WIDE);
+    expect(l.placements[4].orientation).toBe('vertical');
+    // Vertical tile sits below the last horizontal, right-aligned with it.
+    const lastHoriz = l.placements[3];
+    expect(l.placements[4].x).toBe(lastHoriz.x + TILE_HORIZ_WIDTH - TILE_VERT_WIDTH);
+    expect(l.placements[4].y).toBe(TILE_HORIZ_HEIGHT + TILE_GAP);
+  });
+
+  it('continues in the reverse direction after two vertical turn tiles', () => {
+    const l = snakeLayout(7, WIDE);
+    expect(l.placements[4].orientation).toBe('vertical');
+    expect(l.placements[5].orientation).toBe('vertical');
+    expect(l.placements[6].orientation).toBe('horizontal');
+    expect(l.placements[6].reverse).toBe(true);
+    // The row-2 tile hangs off the left of the vertical column so the tile
+    // is next to it, extending leftward.
+    const secondVert = l.placements[5];
+    expect(l.placements[6].x).toBe(secondVert.x + TILE_VERT_WIDTH - TILE_HORIZ_WIDTH);
+    expect(l.placements[6].y).toBe(
+      secondVert.y + TILE_VERT_HEIGHT + TILE_GAP,
+    );
+  });
+
+  it('never lets the chain exceed the container width', () => {
+    for (let n = 1; n <= 28; n++) {
+      const l = snakeLayout(n, WIDE);
+      expect(l.width).toBeLessThanOrEqual(WIDE);
+    }
+  });
+
+  it('falls back to 1 horizontal per row when the container is very narrow', () => {
+    const l = snakeLayout(4, 60);
+    // K = max(1, floor((60+4)/80)) = 1
+    // So tile 1 is a vertical, tile 2 is a vertical, tile 3 is horizontal in row 2.
+    expect(l.placements[0].orientation).toBe('horizontal');
+    expect(l.placements[1].orientation).toBe('vertical');
+    expect(l.placements[2].orientation).toBe('vertical');
+    expect(l.placements[3].orientation).toBe('horizontal');
+    expect(l.placements[3].reverse).toBe(true);
   });
 });
 
