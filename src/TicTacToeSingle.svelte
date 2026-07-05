@@ -96,18 +96,18 @@
     padding: 0.25rem 0.5rem;
     margin-bottom: 0.5rem;
     background: transparent;
-    color: #a1a1aa;
+    color: var(--text-muted);
     border: none;
     font-size: 0.95rem;
     cursor: pointer;
   }
   .back:hover {
-    color: #f4f4f5;
+    color: var(--text);
   }
   .status {
     font-size: 1.2rem;
     margin: 1rem 0;
-    color: #a1a1aa;
+    color: var(--text-muted);
   }
   .board {
     display: grid;
@@ -117,14 +117,14 @@
   .cell {
     aspect-ratio: 1;
     font-size: 2.5rem;
-    background: #27272a;
-    color: #f4f4f5;
-    border: 1px solid #3f3f46;
+    background: var(--surface-2);
+    color: var(--text);
+    border: 1px solid var(--border);
     border-radius: 8px;
     cursor: pointer;
   }
   .cell:hover:not(:disabled) {
-    background: #3f3f46;
+    background: var(--border);
   }
   .cell:disabled {
     cursor: default;

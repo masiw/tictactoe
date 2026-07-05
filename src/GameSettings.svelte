@@ -53,19 +53,19 @@
     padding: 0.25rem 0.5rem;
     margin-bottom: 0.5rem;
     background: transparent;
-    color: #a1a1aa;
+    color: var(--text-muted);
     border: none;
     font-size: 0.95rem;
     cursor: pointer;
   }
   .back:hover {
-    color: #f4f4f5;
+    color: var(--text);
   }
   h1 {
     margin: 0.5rem 0 0.25rem;
   }
   .subtitle {
-    color: #71717a;
+    color: var(--text-dim);
     font-size: 0.95rem;
     margin: 0 0 1.5rem;
   }
@@ -79,7 +79,7 @@
     text-align: left;
   }
   .options legend {
-    color: #a1a1aa;
+    color: var(--text-muted);
     font-size: 0.9rem;
     padding: 0;
     margin-bottom: 0.5rem;
@@ -89,14 +89,14 @@
     align-items: flex-start;
     gap: 0.75rem;
     padding: 0.85rem 1rem;
-    background: #18181b;
-    color: #f4f4f5;
-    border: 1px solid #3f3f46;
+    background: var(--surface);
+    color: var(--text);
+    border: 1px solid var(--border);
     border-radius: 8px;
     cursor: pointer;
   }
   .option:hover {
-    background: #27272a;
+    background: var(--surface-2);
   }
   .option input {
     margin-top: 0.25rem;
@@ -111,7 +111,7 @@
     font-size: 1rem;
   }
   .option-detail {
-    color: #71717a;
+    color: var(--text-dim);
     font-size: 0.85rem;
   }
   .start {

@@ -245,22 +245,22 @@
     padding: 0.25rem 0.5rem;
     margin-bottom: 0.5rem;
     background: transparent;
-    color: #a1a1aa;
+    color: var(--text-muted);
     border: none;
     font-size: 0.95rem;
     cursor: pointer;
   }
   .back:hover {
-    color: #f4f4f5;
+    color: var(--text);
   }
   .status {
     font-size: 1.2rem;
     margin: 1rem 0;
-    color: #a1a1aa;
+    color: var(--text-muted);
   }
   .role {
     margin-top: 1rem;
-    color: #71717a;
+    color: var(--text-dim);
     font-size: 0.9rem;
   }
   .error {
@@ -276,14 +276,14 @@
   .cell {
     aspect-ratio: 1;
     font-size: 2.5rem;
-    background: #27272a;
-    color: #f4f4f5;
-    border: 1px solid #3f3f46;
+    background: var(--surface-2);
+    color: var(--text);
+    border: 1px solid var(--border);
     border-radius: 8px;
     cursor: pointer;
   }
   .cell:hover:not(:disabled) {
-    background: #3f3f46;
+    background: var(--border);
   }
   .cell:disabled {
     cursor: default;
@@ -310,17 +310,17 @@
     margin-top: 1rem;
     padding: 0.5rem 1rem;
     font-size: 0.95rem;
-    background: #18181b;
-    color: #f4f4f5;
-    border: 1px solid #3f3f46;
+    background: var(--surface);
+    color: var(--text);
+    border: 1px solid var(--border);
     border-radius: 6px;
     cursor: pointer;
   }
   .reveal:hover:not(:disabled) {
-    background: #27272a;
+    background: var(--surface-2);
   }
   .reveal:disabled {
-    color: #52525b;
+    color: var(--text-faint);
     cursor: default;
   }
 </style>
