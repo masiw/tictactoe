@@ -29,7 +29,7 @@
     text-align: center;
   }
   .subtitle {
-    color: #71717a;
+    color: var(--text-dim);
     font-size: 0.95rem;
     margin: 0.5rem 0 1.5rem;
   }
@@ -41,14 +41,14 @@
   .game {
     padding: 0.85rem 1rem;
     font-size: 1.05rem;
-    background: #18181b;
-    color: #f4f4f5;
-    border: 1px solid #3f3f46;
+    background: var(--surface);
+    color: var(--text);
+    border: 1px solid var(--border);
     border-radius: 8px;
     cursor: pointer;
     text-align: center;
   }
   .game:hover {
-    background: #27272a;
+    background: var(--surface-2);
   }
 </style>

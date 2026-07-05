@@ -62,6 +62,6 @@
     width: 6px;
     height: 6px;
     border-radius: 50%;
-    background: #18181b;
+    background: var(--pip);
   }
 </style>

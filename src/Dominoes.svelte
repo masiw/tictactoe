@@ -382,27 +382,27 @@
     padding: 0.25rem 0.5rem;
     margin-bottom: 0.5rem;
     background: transparent;
-    color: #a1a1aa;
+    color: var(--text-muted);
     border: none;
     font-size: 0.95rem;
     cursor: pointer;
   }
   .back:hover {
-    color: #f4f4f5;
+    color: var(--text);
   }
   .status {
     font-size: 1.15rem;
     margin: 1rem 0 0.5rem;
-    color: #a1a1aa;
+    color: var(--text-muted);
   }
   .opponent {
-    color: #71717a;
+    color: var(--text-dim);
     font-size: 0.9rem;
     margin: 0 0 1rem;
   }
   .role {
     margin-top: 1rem;
-    color: #71717a;
+    color: var(--text-dim);
     font-size: 0.9rem;
   }
   .error {
@@ -415,7 +415,7 @@
     padding: 0.5rem 0;
   }
   .empty-board {
-    color: #52525b;
+    color: var(--text-faint);
     font-style: italic;
     margin: 0.75rem 0;
   }
@@ -427,9 +427,9 @@
     display: inline-flex;
     height: 44px;
     width: 76px;
-    background: #f4f4f5;
-    color: #18181b;
-    border: 1px solid #d4d4d8;
+    background: var(--tile-bg);
+    color: var(--pip);
+    border: 1px solid var(--tile-border);
     border-radius: 6px;
     overflow: hidden;
     padding: 0;
@@ -443,11 +443,11 @@
     justify-content: center;
   }
   .tile .half + .half {
-    border-left: 1px solid #d4d4d8;
+    border-left: 1px solid var(--tile-border);
     border-top: none;
   }
   .board-tile {
-    background: #f4f4f5;
+    background: var(--tile-bg);
     position: absolute;
   }
   .board-tile.tile-vert {
@@ -457,7 +457,7 @@
   }
   .board-tile.tile-vert .half + .half {
     border-left: none;
-    border-top: 1px solid #d4d4d8;
+    border-top: 1px solid var(--tile-border);
   }
   .hand {
     display: flex;
@@ -471,7 +471,7 @@
     padding: 0;
   }
   .hand-tile:hover:not(:disabled) {
-    background: #e4e4e7;
+    background: var(--tile-hover);
   }
   .hand-tile:disabled {
     cursor: default;
@@ -492,34 +492,34 @@
   .side {
     padding: 0.5rem 0.75rem;
     font-size: 0.95rem;
-    background: #18181b;
-    color: #f4f4f5;
-    border: 1px solid #3f3f46;
+    background: var(--surface);
+    color: var(--text);
+    border: 1px solid var(--border);
     border-radius: 6px;
     cursor: pointer;
   }
   .side:hover:not(:disabled) {
-    background: #27272a;
+    background: var(--surface-2);
   }
   .side:disabled {
-    color: #52525b;
+    color: var(--text-faint);
     cursor: default;
   }
   .pass {
     margin-top: 1rem;
     padding: 0.55rem 1rem;
     font-size: 0.95rem;
-    background: #18181b;
-    color: #f4f4f5;
-    border: 1px solid #3f3f46;
+    background: var(--surface);
+    color: var(--text);
+    border: 1px solid var(--border);
     border-radius: 6px;
     cursor: pointer;
   }
   .pass:hover:not(:disabled) {
-    background: #27272a;
+    background: var(--surface-2);
   }
   .pass:disabled {
-    color: #52525b;
+    color: var(--text-faint);
     cursor: default;
   }
 </style>
