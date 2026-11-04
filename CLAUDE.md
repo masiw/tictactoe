@@ -51,12 +51,16 @@ Use the `mcp__github__*` tools for all GitHub operations — there is no `gh` CL
 - `src/firebase.ts` — Firebase init + `getDb()`
 - `src/multiplayer.ts` — Tic-Tac-Toe multiplayer primitives. Data model: `/games/{pushKey}`. `planMatch`, `claimMatch`, `makeMove`, `declareForfeit`, `subscribeGame`, `shouldForfeit`, `isExpired`, `revealPreviousMove`. Move clock is `MOVE_CLOCK_MS` (2 min) tied to `lastMoveAt`.
 - `src/dominoesMultiplayer.ts` — Dominoes multiplayer primitives. Data model: `/dominoes/{pushKey}` with serialized tile chains (`board: string`, `p1.hand`/`p2.hand: string`). Mirrors the matchmaking shape of `multiplayer.ts`. `applyAction` handles both `place` and `pass`; ends the game when a hand empties or both players consecutively pass (blocked → lower pip total wins, tie is a draw).
+- `src/rummikub.ts` — pure Rummikub logic (106-tile set: 1–13 in four colours, two of each, plus 2 jokers). `fullSet`, `deal`, `isValidGroup`/`isValidRun`/`isValidSet`, `setValue`, `handScore`, and `validateCommit` (the authentic turn validator: tile conservation, ≥1 tile played from hand, every set valid, and before a player's opening meld the table must be untouched and the new sets total ≥30). Tiles serialize as `${color}${number}`/`j` strings; table as `;`-separated, `,`-joined sets. Fully unit-tested.
+- `src/rummikubMultiplayer.ts` — Rummikub multiplayer primitives. Data model: `/rummikub/{pushKey}` (`table: string`, `pool: string`, `p1.hand`/`p2.hand: string`, `openingP1`/`openingP2: bool`). Online only. `applyAction` handles `commit` (submit new table + remaining hand, validated via `validateCommit`), `draw` (take from pool), and `pass` (only when pool empty). Authentic: 30-point opening meld + full table manipulation. Win on empty hand; blocked game (both pass, empty pool) scored by lower `handScore` (joker = 30), tie is a draw.
 - `src/App.svelte` — tiny URL router. Tracks `location.pathname` and `location.search` reactively. Routes:
   - `/` → `Home`
-  - `/tictactoe`, `/dominoes` (no `mode` param) → `GameSettings`
+  - `/tictactoe`, `/dominoes`, `/rummikub` (no `mode` param) → `GameSettings`
   - `/tictactoe?mode=network` → `TicTacToe` · `?mode=single` → `TicTacToeSingle`
   - `/dominoes?mode=network` → `Dominoes` · `?mode=single` → `DominoesSingle`
+  - `/rummikub?mode=network` → `Rummikub` (online only for now; `?mode=single` falls back to `GameSettings`)
   Owns the global `html`/`body` styles. Handles `popstate` for browser back/forward.
+- `src/Rummikub.svelte` — networked Rummikub UI. On your turn it opens an editable workspace (copy of the table + your hand); tap a tile then tap a set / ＋ New set / ↩ to hand to rearrange. "End turn" is enabled only when `validateCommit` passes. `src/RummikubTile.svelte` renders a single tile (coloured numeral, ★ for joker).
 - `src/Home.svelte` — game lobby. Receives `navigate` from `App`.
 - `src/GameSettings.svelte` — settings page shown when a game route has no `mode` param. Lets the player pick **Over the network** or **On a single device**; "Start game" navigates to `/{game}?mode={mode}`. Settings live in URL params only — no localStorage / cookies.
 - `src/TicTacToe.svelte` / `src/Dominoes.svelte` — networked multiplayer UI components. Own gameplay state, Firebase subscriptions, forfeit detection, animations.

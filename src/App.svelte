@@ -4,6 +4,7 @@
   import DominoesSingle from './DominoesSingle.svelte';
   import GameSettings from './GameSettings.svelte';
   import Home from './Home.svelte';
+  import Rummikub from './Rummikub.svelte';
   import TicTacToe from './TicTacToe.svelte';
   import TicTacToeSingle from './TicTacToeSingle.svelte';
 
@@ -78,6 +79,12 @@
     <DominoesSingle {navigate} />
   {:else}
     <GameSettings {navigate} game="dominoes" />
+  {/if}
+{:else if path === '/rummikub'}
+  {#if mode === 'network'}
+    <Rummikub {navigate} />
+  {:else}
+    <GameSettings {navigate} game="rummikub" />
   {/if}
 {:else}
   <Home {navigate} />
