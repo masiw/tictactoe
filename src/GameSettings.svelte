@@ -1,13 +1,19 @@
 <script lang="ts">
   export let navigate: (path: string) => void;
-  export let game: 'tictactoe' | 'dominoes';
+  export let game: 'tictactoe' | 'dominoes' | 'rummikub';
 
   const labels: Record<typeof game, string> = {
     tictactoe: 'Tic-Tac-Toe',
     dominoes: 'Dominoes',
+    rummikub: 'Rummikub',
   };
 
+  // Single-device play isn't available for every game yet.
+  $: singleAvailable = game !== 'rummikub';
+
   let mode: 'network' | 'single' = 'network';
+  // Keep the selection valid if single-device isn't offered for this game.
+  $: if (!singleAvailable) mode = 'network';
 
   function start() {
     navigate(`/${game}?mode=${mode}`);
@@ -28,11 +34,15 @@
         <span class="option-detail">Each player on their own device.</span>
       </span>
     </label>
-    <label class="option">
-      <input type="radio" bind:group={mode} value="single" />
+    <label class="option" class:disabled={!singleAvailable}>
+      <input type="radio" bind:group={mode} value="single" disabled={!singleAvailable} />
       <span class="option-body">
         <span class="option-title">On a single device</span>
-        <span class="option-detail">Two players share this device, taking turns.</span>
+        <span class="option-detail">
+          {singleAvailable
+            ? 'Two players share this device, taking turns.'
+            : 'Coming soon for this game — online only for now.'}
+        </span>
       </span>
     </label>
   </fieldset>
@@ -97,6 +107,13 @@
   }
   .option:hover {
     background: var(--surface-2);
+  }
+  .option.disabled {
+    opacity: 0.5;
+    cursor: default;
+  }
+  .option.disabled:hover {
+    background: var(--surface);
   }
   .option input {
     margin-top: 0.25rem;
